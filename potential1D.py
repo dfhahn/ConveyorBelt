@@ -239,23 +239,20 @@ class envelopedPotential(potential):
         self.Eoff_i = Eoff_i
 
     def _calculate_energies(self, positions:(t.List[float] or float), *kargs) -> list:
-        Vrs = []
-        for pos in positions:
-            partA = [-self.s * (Vit - self.Eoff_i[0]) for Vit in self.V_is[0].ene(pos)]
-            partB = [-self.s * (Vit - self.Eoff_i[1]) for Vit in self.V_is[1].ene(pos)]
-            sum_prefactors = [max(A_t, B_t) + math.log(1 + math.exp(min(A_t, B_t) - max(A_t, B_t))) for A_t, B_t in
-                              zip(partA, partB)]
+        
+        partA = [-self.s*(Vit-self.Eoff_i[0]) for Vit in self.V_is[0].ene(positions)]
+        partB = [-self.s*(Vit-self.Eoff_i[1]) for Vit in self.V_is[1].ene(positions)]
+        sum_prefactors = [max(A_t,B_t)+math.log(1+math.exp(min(A_t,B_t)-max(A_t,B_t))) for A_t, B_t in zip(partA, partB)]
 
-            # more than two states!
-            for state in range(2, self.numStates):
-                partN = [-self.s * (Vit - self.Eoff_i[state]) for Vit in self.V_is[state].ene(pos)]
-                sum_prefactors = [max(sum_prefactors_t, N_t) + math.log(
-                    1 + math.exp(min(sum_prefactors_t, N_t) - max(sum_prefactors_t, N_t))) for sum_prefactors_t, N_t in
-                                  zip(sum_prefactors, partN)]
+        #more than two states!
+        for state in range(2, self.numStates):
+            partN = [-self.s * (Vit - Eoffi[state]) for Vit in Vi[state].ene(pos)]
+            sum_prefactors = [max(sum_prefactors_t, N_t) + math.log(1 + math.exp(min(sum_prefactors_t, N_t) - max(sum_prefactors_t, N_t))) for sum_prefactors_t, N_t in zip(sum_prefactors, partN)]
 
-            Vrs.append(sum([-1 / float(self.s) * partitionF for partitionF in sum_prefactors]))
-        return Vrs
+        Vr = [-1/float(self.s)*partitionF for partitionF in sum_prefactors]
+        return Vr
 
+    
     def _calculate_dhdpos(self,  positions:(t.List[float] or float), *kargs):
         raise NotImplementedError("Function "+__name__+" was not implemented for class "+str(__class__)+"")
 
