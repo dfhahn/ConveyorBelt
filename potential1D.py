@@ -15,6 +15,7 @@ class potential:
         if (any([type(positions) == typ for typ in [float, int, str]])):
             positions = [float(positions)]
         elif(type(positions) != list):
+            #print(positions)
             positions = list(map(float, list(positions)))
         return positions
 
@@ -209,7 +210,50 @@ class expCoupledHosc(potential):
                        np.exp(-self.beta * self.s * self.hb.ene(lam, pos)) - np.exp(
                    -self.beta * self.s * self.ha.ene(lam, pos))) for pos in positions]
 
+class flat_well(potential):
+    '''
+    flat well potential
+    '''
+    x_shift = None
+    fc = None
 
+    def __init__(self, x_range:list=[0,1],y_max:float = 1000):
+        '''
+        initializes flat well potential class
+      
+        '''
+        super(flat_well, self).__init__()
+        self.x_min = min(x_range)
+        self.x_max = max(x_range)
+        self.y_max = y_max
+        
+    def _calculate_energies(self, positions, *kargs):
+        return [0  if(pos > self.x_min and pos < self.x_max) else self.y_max for pos in positions]
+    
+class flat_well(potential):
+    '''
+    flat well potential
+    '''
+    x_min:float = None
+    x_max:float = None
+    y_max = None
+
+    def __init__(self, x_range:list=[0,1], y_max:float = 1000):
+        '''
+        initializes flat well potential class
+      
+        '''
+        super(flat_well, self).__init__()
+        self.x_min = min(x_range)
+        self.x_max = max(x_range)
+        self.y_max = y_max
+        
+    def _calculate_energies(self, positions, *kargs):
+        return [0  if(pos > self.x_min and pos < self.x_max) else self.y_max for pos in positions]
+
+    def _calculate_dhdpos(self, positions:(t.List[float] or float), *kargs) -> (t.List[float] or float):
+        return self._calculate_energies(self, positions, *kargs)
+    
 class envelopedPotential(potential):
     V_is:t.List[potential]=None
     E_is:t.List[float]=None
@@ -238,15 +282,28 @@ class envelopedPotential(potential):
         self.s = s
         self.Eoff_i = Eoff_i
 
+    #each state gets a position list
+    def _check_positions_type(self, positions:t.List[float])->t.List[float]:
+        if (any([type(positions) == typ for typ in [float, int, str]])):
+            positions = [float(positions) for state in range(self.numStates+1)]
+        elif(type(positions[0]) != list):
+            if(len(positions)!= self.numStates):
+                positions = [list(map(float, list(positions))) for state in range(self.numStates + 1)]
+            else:   #TODO BULLSHIT CODE@!
+                #flattening
+                return  positions
+        elif(len(positions) != self.numStates):
+            positions = [positions for state in range(self.numStates+1)]
+        return positions
+
     def _calculate_energies(self, positions:(t.List[float] or float), *kargs) -> list:
-        
-        partA = [-self.s*(Vit-self.Eoff_i[0]) for Vit in self.V_is[0].ene(positions)]
-        partB = [-self.s*(Vit-self.Eoff_i[1]) for Vit in self.V_is[1].ene(positions)]
+        partA = [-self.s*(Vit-self.Eoff_i[0]) for Vit in self.V_is[0].ene(positions[0])]
+        partB = [-self.s*(Vit-self.Eoff_i[1]) for Vit in self.V_is[1].ene(positions[1])]
         sum_prefactors = [max(A_t,B_t)+math.log(1+math.exp(min(A_t,B_t)-max(A_t,B_t))) for A_t, B_t in zip(partA, partB)]
 
         #more than two states!
         for state in range(2, self.numStates):
-            partN = [-self.s * (Vit - Eoffi[state]) for Vit in Vi[state].ene(pos)]
+            partN = [-self.s * (Vit - self.Eoff_i[state]) for Vit in self.V_is[state].ene(positions[state])]
             sum_prefactors = [max(sum_prefactors_t, N_t) + math.log(1 + math.exp(min(sum_prefactors_t, N_t) - max(sum_prefactors_t, N_t))) for sum_prefactors_t, N_t in zip(sum_prefactors, partN)]
 
         Vr = [-1/float(self.s)*partitionF for partitionF in sum_prefactors]
@@ -269,3 +326,31 @@ class envelopedDoubleWellPotential(envelopedPotential):
         V_is = [harmonicOsc1D(x_shift=x_shift, y_shift=y_shift, fc=fc)
                 for y_shift, x_shift, fc in zip(y_shifts, x_shifts, fcs)]
         super().__init__(V_is=V_is, s=smoothing)
+
+class lennardJonesPotential(potential):
+    '''
+    Lennard Jones Potential
+    '''
+    c6:float = None
+    c12:float = None
+    x_shift:float = None
+    y_shift:float = None
+    def __init__(self, c6:float, c12:float, x_shift:float=0, y_shift=0):
+        '''
+        initializes flat well potential class
+      
+        '''
+        super().__init__()
+        self.c6 = c6
+        self.c12 = c12
+        x_shift=x_shift
+        y_shift=y_shift
+        
+    def _calculate_energies(self, positions, *kargs) -> t.List[float]:
+        return [(self.c12/pos**12)-(self.c6/pos**6) for pos in positions]
+
+    def _calculate_dhdpos(self, positions:(t.List[float] or float), *kargs) -> t.List[float]:
+        return [6*((2*self.c12)-(pos**6*self.c6))/pos**13 for pos in positions]
+        
+if __name__ == "__main__":
+    pass
