@@ -288,7 +288,7 @@ class envelopedPotential(potential):
             positions = [float(positions) for state in range(self.numStates+1)]
         elif(type(positions[0]) != list):
             if(len(positions)!= self.numStates):
-                positions = [list(map(float, list(positions))) for state in range(self.numStates + 1)]
+                positions = [list(map(float, list(positions))) for state in range(self.numStates)]
             else:   #TODO BULLSHIT CODE@!
                 #flattening
                 return  positions
@@ -311,7 +311,28 @@ class envelopedPotential(potential):
 
     
     def _calculate_dhdpos(self,  positions:(t.List[float] or float), *kargs):
-        raise NotImplementedError("Function "+__name__+" was not implemented for class "+str(__class__)+"")
+        V_R_ene = self.ene(positions)
+        V_Is_ene = [statePot.ene(state_pos) for statePot, state_pos in zip(self.V_is, positions)]
+        V_Is_dhdpos = [statePot.ene(state_pos) for statePot, state_pos in zip(self.V_is, positions)]
+        dhdpos=[]
+        #print("pos:\tprefactor\tV")
+        for position in range(len(positions[0])):
+            dhdpos_R = 0
+            dhdpos_state=[]
+            for V_state_ene, V_state_dhdpos in zip(V_Is_ene, V_Is_dhdpos):
+                #den = sum([math.exp(-const.k *Vstate[position]) for Vstate in V_Is_ene])
+                #prefactor = (math.exp(-const.k *V_state_ene[position]))/den if (den!=0) else 0
+                if(V_state_ene[position]==0): 
+                    prefactor = 0 
+                else:
+                    prefactor = 1-(V_state_ene[position]/(sum([ Vstate[position] for Vstate in V_Is_ene]))) if (sum([ Vstate[position] for Vstate in V_Is_ene])!=0) else 0
+                #print(round(positions[0][position],2),"\t",round(prefactor,2),"\t" , round(V_state_dhdpos[position]), "\t", round(V_R_ene[position]))
+                dhdpos_state.append(prefactor*V_state_dhdpos[position])
+                dhdpos_R += prefactor*V_state_dhdpos[position]
+                dlist = [dhdpos_R]
+                dlist.extend(dhdpos_state)
+            dhdpos.append(dlist)   
+        return dhdpos
 
 class envelopedDoubleWellPotential(envelopedPotential):
     def __init__(self, y_shifts: list = None, x_shifts=None,
