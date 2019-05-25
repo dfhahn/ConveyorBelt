@@ -4,7 +4,6 @@ Module: dataStructure
 """
 from collections import namedtuple
 
-
 #states:
 basicState = namedtuple("State", ["position", "temperature",
                                   "totEnergy", "totPotEnergy", "totKinEnergy",

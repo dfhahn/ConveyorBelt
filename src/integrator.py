@@ -2,94 +2,251 @@
 Module: integrator
     This module shall be used to implement subclasses of integrator. The integrators are use for propagating simulatoins.
 """
-#import newSystem1D as sys
 import numpy as np
+from typing import Tuple
 import scipy.constants as const
 
+#from src.system import system
+system = None
+
 class integrator:
+    """
+    autoclass: integrator
+        This class is the parent class to all other classes.
+    """
+    #Params
+    maxStepSize:float = None
+    minStepSize:float = None
+    spaceRange:tuple = None
+
+    #calculation
+    posShift:float = 0
+
+    #Limits:
+    _critInSpaceRange = lambda self,pos: self.spaceRange == None or (self.spaceRange != None and pos >= min(self.spaceRange) and pos <= max(self.spaceRange))
 
     def __init__(self):
         raise NotImplementedError("This "+__class__+" class is not implemented")
     
-    def step(self, system:None):
+    def step(self, system:system):
+        """
+        ..autofunction: step
+            This is the parent function that is the interface for all integrator step functions.
+
+        :param system: This is a system, that should be integrated.
+        :type system: src.system.system
+        :return: (new Position, new velocity, position Shift/ force)
+        :rtype: (float, float, float)
+        """
         raise NotImplementedError("The function step in "+__class__+" class is not implemented")
-    
+
+    def integrate(self, system:system, steps:int):
+        for step in range(steps):
+            (newPosition, newVelocity, newForces) = self.step(system=system)
+            system.append_state(newPosition=newPosition, newVelocity=newVelocity, newForces=newForces)
+
+
+"""
+Stochastic Integrators
+"""
 class monteCarloIntegrator(integrator):
-    posShift:float = 0
-    maxStepSize:float = None
-    spaceRange:tuple = None
-    resolution:float = 0.0001
-    _critInSpaceRange = lambda self,pos: self.spaceRange != None and pos >= min(self.spaceRange) and pos <= max(self.spaceRange)
-    
-    def __init__(self, maxStepSize:float=None, spaceRange:tuple=None):
+    """
+    ..autoclass: monteCarloIntegrator
+        This class implements the classic monte carlo integrator.
+        It choses its moves purely randomly.
+    """
+    resolution:float = 0.01   #increase the ammount of different possible values = between 0 and 10 there are 10/0.01 different positions.
+
+    def __init__(self, maxStepSize:float=None, minStepSize:float=None, spaceRange:tuple=None):
         self.maxStepSize = maxStepSize
+        self.minStepSize = minStepSize
         self.spaceRange = spaceRange
         pass
     
-    def step(self, system):
-        while(True):    #while no value in spaceRange was found, terminates in first run if no spaceRange
-            #integrate
+    def step(self, system)-> Tuple[float, None, float]:
+        """
+        ..autofunction: step
+            This function is performing an integration step in MonteCarlo fashion.
+        :param system: This is a system, that should be integrated.
+        :type system: src.system.system
+        :return: (new Position, None, position Shift)
+        :rtype: (float, None, float)
+        """
+        # integrate
+        # while no value in spaceRange was found, terminates in first run if no spaceRange
+        while(True):
             current_state = system.currentState
             self.oldpos = current_state.position
             self.randomShift()
             self.newPos = self.oldpos + self.posShift
             
-            #only get positions in certain range
+            #only get positions in certain range or accept if no range
             if(self._critInSpaceRange(self.newPos)):
                 break
             else:
                 self.newPos = self.oldpos           #reject step outside of range
-        return self.newPos, None, None
+        return self.newPos, None, self.posShift
     
-    def randomShift(self):
-        if(self.spaceRange!=None):   #check for space range, that posShift is not bigger than space Range > converges faster in 
-            self.posShift = np.random.randint(low=self.spaceRange[0]/self.resolution, high=self.spaceRange[1]/self.resolution)*self.resolution
+    def randomShift(self)->float:
+        """
+        ..autofunction: randomShift
+            This function calculates the shift for the current position.
+
+        :return: position shift
+        :rtype: float
+        """
+        #which sign will the shift have?
+        sign = -1 if(np.random.randint(low=0, high=100) <50) else 1
+        #Check if there is a space restriction? - converges faster
+        if(self.spaceRange!=None):
+            shift = abs(np.random.randint(low=self.spaceRange[0]/self.resolution, high=self.spaceRange[1]/self.resolution)*self.resolution)
         else:
-            self.posShift = np.random.rand()
-            
-        if(self.maxStepSize != None):#is there a maximal step size?
-            self.posShift = self.posShift/100*self.maxStepSize
+            shift = abs(np.random.rand())
+
+        #Is the step shift in the allowed area?
+        if(self.maxStepSize != None and shift > self.maxStepSize):#is there a maximal step size?
+            self.posShift = sign*self.maxStepSize
+        elif(self.minStepSize != None and shift < self.minStepSize):
+            self.posShift = sign*self.minStepSize
+        else:
+            self.posShift = sign*shift
 
         return self.posShift
 
-    
 class metropolisMonteCarloIntegrator(monteCarloIntegrator):
-    posShift:float = 0
-    maxStepSize:float = None
-    spaceRange:tuple = None
-    resolution:float = 0.0001
-    metropolisCriterion=None
-    
-    _defaultMetropolisCriterion = lambda self, ene_new, currentState: (ene_new < currentState.totEnergy or 
-                                                                       np.random.rand() <= np.exp(-1.0 / (const.gas_constant / 1000.0 * currentState.temperature) * (ene_new - currentState.totPotEnergy)))
-    
-    def __init__(self, maxStepSize:float=None, spaceRange:tuple=None, metropolisCriterion=None):
+    """
+    ..autoclass: metropolisMonteCarloInegrator
+        This class is implementing a metropolis monte carlo Integrator.
+        In opposite to the Monte Carlo Integrator, that is completley random, this integrator has limitations to the randomness.
+        Theis limitation is expressed in the Metropolis Criterion.
+
+        There is a standard Metropolis Criterion implemented, but it can also be exchanged with a different one.
+
+        Default Metropolis Criterion:
+            $ decision =  (E_{t} < E_{t-1}) ||  ( rand <= e^{(-1/(R/T*1000))*(E_t-E_{t-1})}$
+            with:
+                - $R$ as universal gas constant
+
+        The original Metropolis Criterion (Nicholas Metropolis et al.; J. Chem. Phys.; 1953 ;doi: https://doi.org/10.1063/1.1699114):
+
+            $ p_A(E_{t}, E_{t-1}, T) = min(1, e^{-1/(k_b*T) * (E_{t} - E_{t-1})})
+            $ decision:  True if( 0.5 < p_A(E_{t}, E_{t-1}, T)) else False
+            with:
+                - $k_b$ as Boltzmann Constant
+    """
+    #
+    #Parameters:
+    metropolisCriterion=None    #use a different Criterion
+    randomnessIncreaseFactor:float = 1  #tune randomness of your results
+    maxIterationTillAccept:float = 100  #how often shall the integrator iterate till it accepts a step forcefully
+
+    #METROPOLIS CRITERION
+    ##random part of Metropolis Criterion:
+    _defaultRandomness = lambda self, ene_new, currentState: ((1/self.randomnessIncreaseFactor)*np.random.rand() <= np.exp(-1.0 / (const.gas_constant / 1000.0 * currentState.temperature) * (ene_new - currentState.totPotEnergy)))
+    ##default Metropolis Criterion
+    _defaultMetropolisCriterion = lambda self, ene_new, currentState: (ene_new < currentState.totEnergy or self._defaultRandomness(ene_new, currentState))
+    ## original criterion not useful causes overflows:
+    #_defaultMetropolisCriterion = lambda self, ene_new, currentState: True if(0.5 > min(1, np.e**(-1/(const.k * currentState.temperature)*(ene_new-currentState.totPotEnergy)))) else False
+
+    def __init__(self, minStepSize:float=None, maxStepSize:float=None, spaceRange:tuple=None, metropolisCriterion=None, randomnessIncreaseFactor=1, maxIterationTillAccept:int=100):
         self.maxStepSize = maxStepSize
+        self.minStepSize = minStepSize
         self.spaceRange = spaceRange
-        
+        self.randomnessIncreaseFactor = randomnessIncreaseFactor
+        self.maxIterationTillAccept = maxIterationTillAccept
         if(metropolisCriterion == None):
             self.metropolisCriterion = self._defaultMetropolisCriterion
         else:
             self.metropolisCriterion = metropolisCriterion
-                
-                
+
     def step(self, system):
+        """
+        ..autofunction: step
+            This function is performing an integration step in MetropolisMonteCarlo fashion.
+        :param system: This is a system, that should be integrated.
+        :type system: src.system.system
+        :return: (new Position, None, position Shift)
+        :rtype: (float, None, float)
+        """
+
+        iterstep = 0
+        current_state = system.currentState
+        self.oldpos = current_state.position
+        # integrate position
         while(True):    #while no value in spaceRange was found, terminates in first run if no spaceRange
-            #integrate position
-            current_state = system.currentState
-            self.oldpos = current_state.position
             self.randomShift()
-            self.newPos = self.oldpos + self.posShift
+            #eval new Energy
+            system._currentPosition = self.oldpos + self.posShift
+            ene = system.totPot()
 
             #MetropolisCriterion
-            ene = system.pot()
-            if (self._critInSpaceRange(self.newPos) and self.metropolisCriterion(ene, current_state)):
+            if ((self._critInSpaceRange(system._currentPosition) and self.metropolisCriterion(ene, current_state)) or iterstep==self.maxIterationTillAccept):
                 break
-            else:
-                self.newPos = self.oldpos  # not accepted
-        return self.newPos, None, None
- 
-    
+            else:   #not accepted
+                iterstep += 1
+                continue
+        return system._currentPosition , None, self.posShift
+
+
+ #OLD
+"""
+Newtonian Integrators
+"""
+class newtonianIntegrator(integrator):
+    currentPosition:float
+    currentVelocity:float
+    currentForces:float
+
+    dt:float
+
+class verlocityVerletIntegrator(newtonianIntegrator):
+    def __init__(self, dt=0.0005):
+        self.dt = dt
+
+    def step(self, system):
+        #init
+        last_state = system.trajectory[-1]
+        self.lastForces = last_state.dhdpos
+        current_state = system.currentState
+        self.old_pos = current_state.position
+        self.currentPosition = self.old_pos
+        self.currentForces = current_state.dhdpos
+        self.currentVelocity = current_state.velocity
+
+        self.newvel = 0.5*(self.currentForces+self.lastForces) / system.mass * self.dt  # t+0.5Dt
+        self.newpos = self.old_pos+ self.newvel * self.dt
+        #propergate:
+
+class positionVerletIntegrator(newtonianIntegrator):
+    def __init__(self, dt=0.0005):
+        self.dt = dt
+
+    def step(self, system):
+        #init
+        current_state = system.currentState
+
+        self.currentPosition = current_state.position
+        self.currentVelocity = current_state.velocity
+
+        #calculation:
+        self.newForces = system.potential.dhdpos(self.currentPosition)[0]    #Todo: make multi particles possible
+        v_new = -self.newForces / system.mass * self.dt
+        self.newvel = 0.5* (self.currentVelocity + v_new)  #update velo
+        self.newpos = self.currentPosition + self.newvel*self.dt
+
+        return self.newpos, self.newvel, self.newForces
+
+
+
+class leapFrogIntegrator(newtonianIntegrator):
+    def __init__(self, dt=0.0005):
+        self.dt = dt
+
+    def step(self, system):
+        pass
+
+"""
+OLD Integrators:
 class newtonIntegrator(integrator):
     def step(self, sys):
         sys.pos = sys.newpos  # t
@@ -165,3 +322,4 @@ class hmcIntegrator(integrator):
         self.steps = steps
         self.dt = dt
         raise NotImplementedError("This "+__class__+" class is not implemented")
+"""

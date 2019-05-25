@@ -218,8 +218,8 @@ class Ensemble:
         return self.__str__()
 
     def __init__(self, caplam, num,
-                 system=system.system1D(temp=300.0, fc=1.0, lam=0.0, alpha=10.0, potential=potential1D.potential(),
-                                        integrator='sd'), build=False):
+                 system=system.system(temp=300.0, fc=1.0, lam=0.0, alpha=10.0, potential=potential1D.potentialCls(),
+                                      integrator='sd'), build=False):
         '''
         initialize Ensemble object
         :param caplam: state of ensemble, 0 <= caplam < pi
