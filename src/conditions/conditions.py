@@ -6,7 +6,9 @@ Module: Conditions
 #from src.system import system
 
 class condition:
-    def __init__(self):
+    _tau:float  #tau = apply every tau steps
+
+    def __init__(self , sys):   #system):
         raise NotImplementedError("This " + __class__ + " class is not implemented")
 
     def apply(self):#, system:system):

@@ -9,7 +9,7 @@ import scipy.constants as const
 import src.dataStructure as data
 from src.potential1D import potentialCls
 from src.integrator import integrator as integratorCls
-from src.conditions import condition
+from src.conditions.conditions import condition
 
 class system:
     '''
@@ -27,6 +27,7 @@ class system:
     #parameters
     temperature:float = 298.0
     mass:float = 1 #for one particle systems!!!!
+    nparticles:int =1 #Todo: adapt it to be multiple particles
     initial_positions:List[float]
     
     #output
@@ -56,6 +57,14 @@ class system:
         if(position == None):
             position = self.randomPos()
 
+        #check if system is coupled to conditions:
+        for condition in self.conditions:
+            if(not hasattr(condition, "system")):
+                condition.coupleSystem(self)
+            if(not hasattr(condition, "dt") and hasattr(self.integrator, dt)):
+                condition.dt = self.integrator.dt
+            else:
+                condition.dt=1
         self._currentPosition = position
         self._currentTemperature = temperature
 
@@ -134,7 +143,7 @@ class system:
 
     def applyConditions(self):
         for aditional in self.conditions:
-            aditional.do(self.current_state)
+            aditional.apply()
 
     def randomPos(self):
         pos = np.random.rand() * 20.0 - 10.0

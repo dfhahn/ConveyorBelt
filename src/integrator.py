@@ -14,6 +14,8 @@ class integrator:
     autoclass: integrator
         This class is the parent class to all other classes.
     """
+    #general:
+    verbose:bool = False
     #Params
     maxStepSize:float = None
     minStepSize:float = None
@@ -45,6 +47,8 @@ class integrator:
             (newPosition, newVelocity, newForces) = self.step(system=system)
             system.append_state(newPosition=newPosition, newVelocity=newVelocity, newForces=newForces)
 
+    def setVerbose(self, verbose:bool=True):
+        self.verbose = verbose
 
 """
 Stochastic Integrators
@@ -207,17 +211,31 @@ class verlocityVerletIntegrator(newtonianIntegrator):
         #init
         last_state = system.trajectory[-1]
         self.lastForces = last_state.dhdpos
-        current_state = system.currentState
-        self.old_pos = current_state.position
-        self.currentPosition = self.old_pos
-        self.currentForces = current_state.dhdpos
-        self.currentVelocity = current_state.velocity
 
-        self.newvel = 0.5*(self.currentForces+self.lastForces) / system.mass * self.dt  # t+0.5Dt
-        self.newpos = self.old_pos+ self.newvel * self.dt
-        #propergate:
+        current_state = system.currentState
+        self.currentPosition =current_state.position
+        self.currentVelocity = current_state.velocity
+        self.currentForces = system.potential.dhdpos(self.currentPosition)[0]    #Todo: make multi particles possible
+
+
+        self.newForces = 0.5*(self.currentForces+self.lastForces)
+        self.newVelocities = self.newForces / system.mass * self.dt  # t+0.5Dt
+        self.newPositions = self.currentPosition + self.newVelocities * self.dt
+
+        if(self.verbose):
+            print("INTEGRATOR: current forces\t ", self.newForces)
+            print("INTEGRATOR: current velocities\t ", self.currentVelocity)
+            print("INTEGRATOR: current position\t ", self.currentPosition)
+
+            print("INTEGRATOR: new forces\t ", self.newForces)
+            print("INTEGRATOR: new velocities\t ", self.newVelocities)
+            print("INTEGRATOR: new position\t ", self.newPositions)
+            print("\n")
+
+        return self.newPositions, self.newVelocities, self.newForces
 
 class positionVerletIntegrator(newtonianIntegrator):
+
     def __init__(self, dt=0.0005):
         self.dt = dt
 
@@ -233,9 +251,16 @@ class positionVerletIntegrator(newtonianIntegrator):
         v_new = -self.newForces / system.mass * self.dt
         self.newvel = 0.5* (self.currentVelocity + v_new)  #update velo
         self.newpos = self.currentPosition + self.newvel*self.dt
+        if(self.verbose):
+            print("INTEGRATOR: current forces\t ", self.newForces)
+            print("INTEGRATOR: current Velocities\t ", self.currentVelocity)
+            print("INTEGRATOR: current_position\t ", self.currentPosition)
+
+            print("INTEGRATOR: newVel\t ", self.newvel)
+            print("INTEGRATOR: newPosition\t ", self.newpos)
+            print("\n")
 
         return self.newpos, self.newvel, self.newForces
-
 
 
 class leapFrogIntegrator(newtonianIntegrator):
