@@ -6,8 +6,8 @@ Module: System
 import numpy as np
 from typing import List
 import scipy.constants as const
-import src.dataStructure as data
-from src.potential1D import potentialCls
+from src import dataStructure as data
+from src.potential1D import potentialCls, perturbedPotentialCls
 from src.integrator import integrator as integratorCls
 from src.conditions.conditions import condition
 
@@ -61,7 +61,7 @@ class system:
         for condition in self.conditions:
             if(not hasattr(condition, "system")):
                 condition.coupleSystem(self)
-            if(not hasattr(condition, "dt") and hasattr(self.integrator, dt)):
+            if(not hasattr(condition, "dt") and hasattr(self.integrator, "dt")):
                 condition.dt = self.integrator.dt
             else:
                 condition.dt=1
@@ -167,8 +167,7 @@ class system:
     def updateEne(self):
         self._currentTotPot = self.totPot()
         self._currentTotKin = self.totKin()
-       # self.redene = self.totpot / (const.gas_constant / 1000.0 * self.temp)#?
-    
+
     def totKin(self):
         if(self._currentVellocities != None):
             return 0.5 * self.mass * self._currentVellocities ** 2
@@ -195,17 +194,19 @@ class system:
         return self.trajectory
 
     
-    
 class perturbedtSystem(system):
     """
     
     """
+
     state = data.lambdaState
+    currentState: data.lambdaState
+    potential: perturbedPotentialCls
 
-    def __init__(self, potential:potentialCls, integrator: integratorCls, conditions: List[condition],
-                 temperature: float = 298.0, position: float = None, lamb:float=0.0):
+    def __init__(self, potential:potentialCls, integrator: integratorCls, conditions: List[condition]=[],
+                 temperature: float = 298.0, position: float = None, lam:float=0.0):
 
-        self.lamb = lamb
+        self.lamb = lam
         super().__init__(potential=potential, integrator=integrator, conditions=conditions,
                  temperature=temperature, position=position)
 
@@ -225,19 +226,15 @@ class perturbedtSystem(system):
 
         
     def updateEne(self):
-        self.current_state = self.state(position=self.pos, temperature=self.temp,
-                                        totEnergy=self.totene, totPotEnergy=self.totPot.ene(self.lam, self.pos), totKinEnergy=self.totkin)
+        self._currentTotPot = self.totPot()
+        self._currentTotKin = self.totKin()
+        self._currentTotE = self._currentTotKin + self._currentTotPot
+        self.redene = self._currentTotE / (const.gas_constant / 1000.0 * self._currentPosition)
 
-        self.totpot = self.totPot.ene(self.lam, self.pos)
-        self.dhdlam = self.totPot.dhdlam(self.lam, self.pos)
-        self.totkin = self.totKin()
-        self.totene = self.totpot + self.totkin
-        self.redene = self.totpot / (const.gas_constant / 1000.0 * self.temp)
-        
-        
-    def update(self, lam):
+    def updateLam(self, lam):
         self.lam = lam
-        self.omega = np.sqrt((1.0 + self.alpha * self.lam) * self.fc / self.mass)
+        self.omega = np.sqrt((1.0 + self.potential.alpha * self.lam) * self.potential.fc / self.mass)
+        self.potential.set_lam(lam=self.lam)
         self.updateEne()
         
 def edsSystem(system1D):

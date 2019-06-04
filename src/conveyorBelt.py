@@ -4,7 +4,7 @@ import copy
 from src import system, potential1D
 
 
-class Ensemble:
+class ConveyorBelt:
     '''
     Conveyor belt ensemble class
     organizes the replicas and their coupling
@@ -96,7 +96,7 @@ class Ensemble:
         '''
         self.caplam = caplam
         for i in range(self.num):
-            self.systems[i].update(self.calc_lam(caplam, i))
+            self.systems[i].updateLam(self.calc_lam(caplam, i))
         self.apply_mem()
         self.ene = self.calc_ene()
         return caplam
@@ -108,7 +108,7 @@ class Ensemble:
         '''
         ene = 0.0
         for i in range(self.num):
-            ene += self.systems[i].totene
+            ene += self.systems[i]._currentTotPot+self.systems[i]._currentTotKin
         self.ene = ene + self.biasene
         return self.ene
 
@@ -134,12 +134,12 @@ class Ensemble:
         newEne = self.ene
         if newEne < oldEne:
             for i in range(self.num):
-                self.state.append([self.stepcount] + self.systems[i].getState())
+                self.state.append(self.systems[i].getCurrentState())
             self.systrajs.append(self.state)
             self.traj.append(np.array([self.stepcount, self.caplam, newEne, self.biasene]))
         elif np.random.rand() <= np.exp(-self.beta * (newEne - oldEne)):
             for i in range(self.num):
-                self.state.append([self.stepcount] + self.systems[i].getState())
+                self.state.append(self.systems[i].getCurrentState())
             self.systrajs.append(self.state)
             self.traj.append(np.array([self.stepcount, self.caplam, newEne, self.biasene]))
         else:
@@ -147,7 +147,7 @@ class Ensemble:
             self.updateBlam(oldBlam)
             # self.revert()
             for i in range(self.num):
-                self.state.append([self.stepcount] + self.systems[i].getState())
+                self.state.append(self.systems[i].getCurrentState())
             self.systrajs.append(self.state)
             self.traj.append(np.array([self.stepcount, oldBlam, oldEne, oldBiasene]))
         if self.build:
@@ -217,9 +217,11 @@ class Ensemble:
         '''
         return self.__str__()
 
+    import src.integrator as integrator
+
     def __init__(self, caplam, num,
-                 system=system.system(temp=300.0, fc=1.0, lam=0.0, alpha=10.0, potential=potential1D.potentialCls(),
-                                      integrator='sd'), build=False):
+                 system=system.perturbedtSystem(temperature=300.0, lam=0.0, potential=potential1D.pertHarmonicOsc1D(fc=1.0, alpha=10.0),
+                                      integrator=integrator.metropolisMonteCarloIntegrator()), build=False):
         '''
         initialize Ensemble object
         :param caplam: state of ensemble, 0 <= caplam < pi
@@ -233,7 +235,7 @@ class Ensemble:
         self.caplam = caplam
         self.stepcount = 0
         self.reject = 0
-        self.beta = 1.0 / (const.gas_constant / 1000.0 * system.temp)
+        self.beta = 1.0 / (const.gas_constant / 1000.0 * system.temperature)
         self.dis = 2.0 * np.pi / num
         self.build = build
         self.systems = [system]
@@ -263,7 +265,7 @@ class Ensemble:
         self.ene = 0.0
 
 
-def calc_traj(steps=1, ens=Ensemble(0.0, 8)):
+def calc_traj(steps=1, ens=ConveyorBelt(0.0, 8)):
     '''
     function to propagate the ensemble ens steps steps
     :param steps: (int) steps
@@ -276,7 +278,7 @@ def calc_traj(steps=1, ens=Ensemble(0.0, 8)):
     return np.array(ens.systrajs), np.array(ens.traj)
 
 
-def calc_traj_file(steps=1, ens=Ensemble(0.0, 8), filestring='traj'):
+def calc_traj_file(steps=1, ens=ConveyorBelt(0.0, 8), filestring='traj'):
     '''
     function to propagate the ensemble ens steps steps and write to file with name filestring
     :param filestring: file name string

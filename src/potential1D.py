@@ -51,50 +51,33 @@ class potentialCls:
         return self._calculate_dhdpos(positions)
 
 
-class perturbedPotential(potentialCls):
-    def _calculate_energies(self, positions:t.List[float], lam:float):
-        raise NotImplementedError("Function " + __name__ + " was not implemented for class " + str(__class__) + "")
+class flat_well(potentialCls):
+    '''
+        .. autoclass:: flat well potential
+    '''
+    x_min: float = None
+    x_max: float = None
+    y_max = None
 
-    def _calculate_dhdpos(self, positions:t.List[float], lam:float):
-        raise NotImplementedError("Function " + __name__ + " was not implemented for class " + str(__class__) + "")
+    def __init__(self, x_range: list = [0, 1], y_max: float = 1000):
+        '''
+        initializes flat well potential class
 
-    def _calculate_dhdlam(self, positions:t.List[float], lam:float):
-        raise NotImplementedError("Function " + __name__ + " was not implemented for class " + str(__class__) + "")
+        '''
+        super(flat_well, self).__init__()
+        self.x_min = min(x_range)
+        self.x_max = max(x_range)
+        self.y_max = y_max
 
-    def ene(self, positions:(t.List[float] or float), lam:float) -> (t.List[float] or float):
-        '''
-        calculates energy of particle
-        :param lam: alchemical parameter lambda
-        :param pos: position on 1D potential energy surface
-        :return: energy
-        '''
-        positions = self._check_positions_type(positions)
-        return self._calculate_energies(positions, lam=lam)
+    def _calculate_energies(self, positions, *kargs):
+        return [0 if (pos > self.x_min and pos < self.x_max) else self.y_max for pos in positions]
 
-    def dhdpos(self, positions:(t.List[float] or float), lam:float) -> (t.List[float] or float):
-        '''
-        calculates derivative with respect to position
-        :param lam: alchemical parameter lambda
-        :param pos: position on 1D potential energy surface
-        :return: derivative dh/dpos
-        '''
-        positions = self._check_positions_type(positions)
-        return self._calculate_dhdpos(positions, lam=lam)
-
-    def dhdlam(self, positions:(t.List[float] or float), lam:float) -> (t.List[float] or float):
-        '''
-        calculates derivative with respect to lambda value
-        :param lam: alchemical parameter lambda
-        :param pos: position on 1D potential energy surface
-        :return: derivative dh/dlan
-        '''
-        positions = self._check_positions_type(positions)
-        return self._calculate_dhdlam(positions, lam=lam)
-
+    def _calculate_dhdpos(self, positions: (t.List[float] or float), *kargs) -> (t.List[float] or float):
+        return self._calculate_energies(self, positions, *kargs)
 
 class harmonicOsc1D(potentialCls):
     '''
-    unperturbed harmonic oscillator potential
+        .. autoclass:: harmonic oscillator potential
     '''
     x_shift = None
     fc = None
@@ -117,9 +100,36 @@ class harmonicOsc1D(potentialCls):
         return [self.fc * (pos - self.x_shift) for pos in positions]
 
 
+class lennardJonesPotential(potentialCls):
+    '''
+        .. autoclass:: Lennard Jones Potential
+    '''
+    c6: float = None
+    c12: float = None
+    x_shift: float = None
+    y_shift: float = None
+
+    def __init__(self, c6: float, c12: float, x_shift: float = 0, y_shift=0):
+        '''
+        initializes flat well potential class
+
+        '''
+        super().__init__()
+        self.c6 = c6
+        self.c12 = c12
+        x_shift = x_shift
+        y_shift = y_shift
+
+    def _calculate_energies(self, positions, *kargs) -> t.List[float]:
+        return [(self.c12 / pos ** 12) - (self.c6 / pos ** 6) for pos in positions]
+
+    def _calculate_dhdpos(self, positions: (t.List[float] or float), *kargs) -> t.List[float]:
+        return [6 * ((2 * self.c12) - (pos ** 6 * self.c6)) / pos ** 13 for pos in positions]
+
+
 class doubleWellPot1D(potentialCls):
     '''
-    unperturbed double well potential
+        .. autoclass:: unperturbed double well potential
     '''
     a = None
     b = None
@@ -144,9 +154,70 @@ class doubleWellPot1D(potentialCls):
     def _calculate_dhdpos(self, positions:t.List[float], *kargs) -> (t.List[float]):
         return [4 * self.Vmax / self.b ** 4 * ((pos - self.a / 2) ** 2 - self.b ** 2) * (pos - self.a / 2) for pos in positions]
 
+class perturbedPotentialCls(potentialCls):
+    """
+        .. autoclass:: perturbedPotentialCls
+    """
+    lam:float
 
-class pertHarmonicOsc1D(perturbedPotential):
-    def __init__(self, fc=1.0, alpha=10.0, gamma=0.0):
+    def __init__(self, lam:float=0.0):
+        '''
+        Initializes a potential of the form V = 0.5 * (1 + alpha * lam) * fc * (pos - gamma * lam) ** 2
+        :param fc: force constant
+        :param alpha: perturbation parameter for width of harmonic oscillator
+        :param gamma: perturbation parameter for position of harmonic oscillator
+        '''
+        super(potentialCls).__init__()
+        self.lam = lam
+
+    def _calculate_energies(self, positions:t.List[float], lam:float=1.0):
+        raise NotImplementedError("Function " + __name__ + " was not implemented for class " + str(__class__) + "")
+
+    def _calculate_dhdpos(self, positions:t.List[float], lam:float=1.0):
+        raise NotImplementedError("Function " + __name__ + " was not implemented for class " + str(__class__) + "")
+
+    def _calculate_dhdlam(self, positions:t.List[float], lam:float=1.0):
+        raise NotImplementedError("Function " + __name__ + " was not implemented for class " + str(__class__) + "")
+
+    def set_lam(self, lam:float):
+        self.lam = lam
+
+    def ene(self, positions:(t.List[float] or float)) -> (t.List[float] or float):
+        '''
+        calculates energy of particle
+        :param lam: alchemical parameter lambda
+        :param pos: position on 1D potential energy surface
+        :return: energy
+        '''
+        positions = self._check_positions_type(positions)
+        return self._calculate_energies(positions, lam=self.lam)
+
+    def dhdpos(self, positions:(t.List[float] or float)) -> (t.List[float] or float):
+        '''
+        calculates derivative with respect to position
+        :param lam: alchemical parameter lambda
+        :param pos: position on 1D potential energy surface
+        :return: derivative dh/dpos
+        '''
+        positions = self._check_positions_type(positions)
+        return self._calculate_dhdpos(positions, lam=self.lam)
+
+    def dhdlam(self, positions:(t.List[float] or float)) -> (t.List[float] or float):
+        '''
+        calculates derivative with respect to lambda value
+        :param lam: alchemical parameter lambda
+        :param pos: position on 1D potential energy surface
+        :return: derivative dh/dlan
+        '''
+        positions = self._check_positions_type(positions)
+        return self._calculate_dhdlam(positions, lam=self.lam)
+
+
+class pertHarmonicOsc1D(perturbedPotentialCls):
+    """
+        .. autoclass:: pertHarmonixsOsc1D
+    """
+    def __init__(self, fc=1.0, alpha=10.0, gamma=0.0, lam:float=0.0):
         '''
         Initializes a potential of the form V = 0.5 * (1 + alpha * lam) * fc * (pos - gamma * lam) ** 2
         :param fc: force constant
@@ -158,6 +229,7 @@ class pertHarmonicOsc1D(perturbedPotential):
         self.fc = fc
         self.alpha = alpha
         self.gamma = gamma
+        self.lam = lam
 
     def _calculate_energies(self, positions:(t.List[float] or float), lam:float=1.0) -> t.List[float]:
         return [0.5 * (1.0 + self.alpha * lam) * self.fc * (pos - self.gamma * lam) ** 2 for pos in positions]
@@ -170,15 +242,15 @@ class pertHarmonicOsc1D(perturbedPotential):
                 1.0 + self.alpha * lam) * self.fc * self.gamma * (pos - self.gamma * lam) for pos in positions]
 
 
-class linCoupledHosc(potentialCls):
-    def __init__(self, ha=harmonicOsc1D(fc=1.0, x_shift=0.0), hb=harmonicOsc1D(fc=11.0, x_shift=0.0)):
+class linCoupledHosc(perturbedPotentialCls):
+    def __init__(self, ha=harmonicOsc1D(fc=1.0, x_shift=0.0), hb=harmonicOsc1D(fc=11.0, x_shift=0.0), lam=0):
         super(potentialCls).__init__()
 
         self.ha = ha
         self.hb = hb
-
+        self.lam = lam
     def _calculate_energies(self, positions:(t.List[float] or float), lam:float=1.0) -> (t.List[float] or float):
-        return [(1.0 - lam) * self.ha.ene(lam, pos) + lam * self.hb.ene(lam, pos) for pos in positions]
+        return [(1.0 - self.lam) * self.ha.ene(lam, pos) + lam * self.hb.ene(lam, pos) for pos in positions]
 
     def _calculate_dhdpos(self, positions:(t.List[float] or float), lam:float=1.0) -> (t.List[float] or float):
         return [(1.0 - lam) * self.ha.dhdpos(lam, pos) + lam * self.hb.dhdpos(lam, pos) for pos in positions]
@@ -187,18 +259,19 @@ class linCoupledHosc(potentialCls):
         return [self.hb.ene(lam, pos) - self.ha.ene(lam, pos) for pos in positions]
 
 
-class expCoupledHosc(potentialCls):
-    def __init__(self, ha=harmonicOsc1D(fc=1.0, x_shift=0.0), hb=harmonicOsc1D(fc=11.0, x_shift=0.0), s=1.0, temp=300.0):
+class expCoupledHosc(perturbedPotentialCls):
+    def __init__(self, ha=harmonicOsc1D(fc=1.0, x_shift=0.0), hb=harmonicOsc1D(fc=11.0, x_shift=0.0), s=1.0, temp=300.0, lam:float = 0.0):
         super(potentialCls).__init__()
 
         self.ha = ha
         self.hb = hb
         self.s = s
         self.beta = const.gas_constant/1000.0 * temp
+        self.lam = lam
 
     def _calculate_energies(self, positions:(t.List[float] or float), lam:float=1.0) -> (t.List[float] or float):
         return [-1.0 / (self.beta * self.s) * np.log(
-            lam * np.exp(-self.beta * self.s * self.hb.ene(lam, pos)) + (1.0 - lam) * np.exp(
+            self.lam * np.exp(-self.beta * self.s * self.hb.ene(lam, pos)) + (1.0 - lam) * np.exp(
                 -self.beta * self.s * self.ha.ene(lam, pos))) for pos in positions]
 
     def _calculate_dhdpos(self, positions:(t.List[float] or float), lam:float=1.0) -> (t.List[float] or float):
@@ -214,51 +287,12 @@ class expCoupledHosc(potentialCls):
                        np.exp(-self.beta * self.s * self.hb.ene(lam, pos)) - np.exp(
                    -self.beta * self.s * self.ha.ene(lam, pos))) for pos in positions]
 
-class flat_well(potentialCls):
-    '''
-    flat well potential
-    '''
-    x_shift = None
-    fc = None
 
-    def __init__(self, x_range:list=[0,1],y_max:float = 1000):
-        '''
-        initializes flat well potential class
-      
-        '''
-        super(flat_well, self).__init__()
-        self.x_min = min(x_range)
-        self.x_max = max(x_range)
-        self.y_max = y_max
-        
-    def _calculate_energies(self, positions, *kargs):
-        return [0  if(pos > self.x_min and pos < self.x_max) else self.y_max for pos in positions]
-    
-class flat_well(potentialCls):
-    '''
-    flat well potential
-    '''
-    x_min:float = None
-    x_max:float = None
-    y_max = None
 
-    def __init__(self, x_range:list=[0,1], y_max:float = 1000):
-        '''
-        initializes flat well potential class
-      
-        '''
-        super(flat_well, self).__init__()
-        self.x_min = min(x_range)
-        self.x_max = max(x_range)
-        self.y_max = y_max
-        
-    def _calculate_energies(self, positions, *kargs):
-        return [0  if(pos > self.x_min and pos < self.x_max) else self.y_max for pos in positions]
-
-    def _calculate_dhdpos(self, positions:(t.List[float] or float), *kargs) -> (t.List[float] or float):
-        return self._calculate_energies(self, positions, *kargs)
-    
 class envelopedPotential(potentialCls):
+    """
+    .. autoclass:: envelopedPotential
+    """
     V_is:t.List[potentialCls]=None
     E_is:t.List[float]=None
     numStates:int=None
@@ -352,31 +386,5 @@ class envelopedDoubleWellPotential(envelopedPotential):
         V_is = [harmonicOsc1D(x_shift=x_shift, y_shift=y_shift, fc=fc)
                 for y_shift, x_shift, fc in zip(y_shifts, x_shifts, fcs)]
         super().__init__(V_is=V_is, s=smoothing)
-
-class lennardJonesPotential(potentialCls):
-    '''
-    Lennard Jones Potential
-    '''
-    c6:float = None
-    c12:float = None
-    x_shift:float = None
-    y_shift:float = None
-    def __init__(self, c6:float, c12:float, x_shift:float=0, y_shift=0):
-        '''
-        initializes flat well potential class
-      
-        '''
-        super().__init__()
-        self.c6 = c6
-        self.c12 = c12
-        x_shift=x_shift
-        y_shift=y_shift
-        
-    def _calculate_energies(self, positions, *kargs) -> t.List[float]:
-        return [(self.c12/pos**12)-(self.c6/pos**6) for pos in positions]
-
-    def _calculate_dhdpos(self, positions:(t.List[float] or float), *kargs) -> t.List[float]:
-        return [6*((2*self.c12)-(pos**6*self.c6))/pos**13 for pos in positions]
-        
 if __name__ == "__main__":
     pass
