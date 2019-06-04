@@ -1,7 +1,6 @@
 from src import potential1D as pot
 from matplotlib import pyplot as plt
 
-
 #UTIL FUNCTIONS
 def significant_decimals(s:float)->float:
     significant_decimal=2
@@ -52,7 +51,7 @@ def envPot_differentS_overlay_min0_plot(eds_potential:pot.envelopedPotential, s_
 
 #show feature landscape per s
 def envPot_differentS_overlay_plot(eds_potential:pot.envelopedPotential, s_values:list, positions:list,
-                                   y_range:tuple=None, hide_legend:bool=False, title:str=None, out_path:str=None):
+                                   y_range:tuple=None, hide_legend:bool=False, title:str=None, out_path:str=None, axes=None):
     #generate energy values
     ys = []
     for s in s_values:
@@ -61,7 +60,11 @@ def envPot_differentS_overlay_plot(eds_potential:pot.envelopedPotential, s_value
         ys.append(enes)
 
     #plotting
-    fig, axes = plt.subplots(nrows=1, ncols=1, figsize=(20,10))
+    if(axes == None):
+        fig, axes = plt.subplots(nrows=1, ncols=1, figsize=(20,10))
+    else:
+        fig = None
+
     for s, y in reversed(list(zip(s_values, ys))):
         axes.plot(positions, y, label="s_"+str(significant_decimals(s)))
 
@@ -76,7 +79,7 @@ def envPot_differentS_overlay_plot(eds_potential:pot.envelopedPotential, s_value
     if(not hide_legend): axes.legend()
     if(title):    fig.suptitle(title)
     if(out_path): fig.savefig(out_path)
-    fig.show()
+    if(fig!= None): fig.show()
 
     return fig, axes
 

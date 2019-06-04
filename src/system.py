@@ -128,6 +128,7 @@ class system:
 
             #Calc new Energy
             self.updateEne()
+
             #Apply Restraints, Constraints ...
             self.applyConditions()
 
@@ -184,7 +185,7 @@ class system:
         self._currentPosition, self._currentVellocities, self._currentForce = self.integrator.step(self) #self.current_state)
 
     def revertStep(self):
-        self.current_state = self.trajectory[-2]
+        self.currentState = self.trajectory[-2]
         return
     
     def getCurrentState(self)->state:
@@ -194,19 +195,23 @@ class system:
         return self.trajectory
 
     
-class perturbedtSystem(system):
+class perturbedSystem(system):
     """
     
     """
 
+    #
     state = data.lambdaState
     currentState: data.lambdaState
     potential: perturbedPotentialCls
 
+    #
+    _currentLam:float = None
+
     def __init__(self, potential:potentialCls, integrator: integratorCls, conditions: List[condition]=[],
                  temperature: float = 298.0, position: float = None, lam:float=0.0):
 
-        self.lamb = lam
+        self._currentLam = lam
         super().__init__(potential=potential, integrator=integrator, conditions=conditions,
                  temperature=temperature, position=position)
 
@@ -215,14 +220,14 @@ class perturbedtSystem(system):
         self.currentState = self.state(position=self._currentPosition, temperature=0,
                                        totEnergy=0, totPotEnergy=0, totKinEnergy=0,
                                        dhdpos=0, velocity=0,
-                                       lamb=self.lamb, dhdlam=0)
+                                       lamb=self._currentLam, dhdlam=0)
         self.updateEne()
 
         self.currentState = self.state(position=self._currentPosition, temperature=self.temperature,
                                        totEnergy=(self._currentTotKin + self._currentTotPot),
                                        totPotEnergy=self._currentTotPot, totKinEnergy=self._currentTotKin,
                                        dhdpos=self._currentForce, velocity=self._currentVellocities,
-                                       lamb=self.lamb, dhdlam=0)
+                                       lamb=self._currentLam, dhdlam=0)
 
         
     def updateEne(self):
@@ -232,9 +237,9 @@ class perturbedtSystem(system):
         self.redene = self._currentTotE / (const.gas_constant / 1000.0 * self._currentPosition)
 
     def updateLam(self, lam):
-        self.lam = lam
-        self.omega = np.sqrt((1.0 + self.potential.alpha * self.lam) * self.potential.fc / self.mass)
-        self.potential.set_lam(lam=self.lam)
+        self._currentLam = lam
+        self.omega = np.sqrt((1.0 + self.potential.alpha * self._currentLam) * self.potential.fc / self.mass)
+        self.potential.set_lam(lam=self._currentLam)
         self.updateEne()
         
 def edsSystem(system1D):

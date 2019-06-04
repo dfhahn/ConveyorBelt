@@ -8,10 +8,12 @@ from collections import namedtuple
 basicState = namedtuple("State", ["position", "temperature",
                                   "totEnergy", "totPotEnergy", "totKinEnergy",
                                   "dhdpos", "velocity"])
+
 lambdaState = namedtuple("LState", ["position", "temperature",
                                    "totEnergy", "totPotEnergy", "totKinEnergy",
                                    "dhdpos",  "velocity",
                                    "lamb", "dhdlam"])
+
 envelopedPStstate = namedtuple("EState", ["position", "temperature",
                                          "totEnergy", "totPotEnergy", "totKinEnergy",
                                          "dhdpos",  "velocity",

@@ -208,7 +208,7 @@ class ConveyorBelt:
         '''
         outstr = ''
         for i in range(self.num):
-            outstr += '{:d}{:10.2f}{:10.3f}\n'.format(i, self.systems[i].lam, self.systems[i].totene)
+            outstr += '{:d}{:10.2f}{:10.3f}\n'.format(i, self.systems[i]._currentLam, self.systems[i].totene)
         return outstr
 
     def __repr__(self):
@@ -220,8 +220,8 @@ class ConveyorBelt:
     import src.integrator as integrator
 
     def __init__(self, caplam, num,
-                 system=system.perturbedtSystem(temperature=300.0, lam=0.0, potential=potential1D.pertHarmonicOsc1D(fc=1.0, alpha=10.0),
-                                      integrator=integrator.metropolisMonteCarloIntegrator()), build=False):
+                 system=system.perturbedSystem(temperature=300.0, lam=0.0, potential=potential1D.pertHarmonicOsc1D(fc=1.0, alpha=10.0),
+                                               integrator=integrator.metropolisMonteCarloIntegrator()), build=False):
         '''
         initialize Ensemble object
         :param caplam: state of ensemble, 0 <= caplam < pi

@@ -1,6 +1,7 @@
 """
 Module: integrator
     This module shall be used to implement subclasses of integrator. The integrators are use for propagating simulatoins.
+    Think about how to link conditions to integrator???
 """
 import numpy as np
 from typing import Tuple
@@ -272,7 +273,7 @@ class leapFrogIntegrator(newtonianIntegrator):
 
 """
 OLD Integrators:
-class newtonIntegrator(integrator):
+class newtonIntegrator(integrator): #LEAPFROG
     def step(self, sys):
         sys.pos = sys.newpos  # t
         sys.force = -sys.pot.dhdpos(sys.lam, sys.pos)  # t
@@ -288,7 +289,7 @@ class newtonIntegrator(integrator):
         self.dt = dt
         raise NotImplementedError("This "+__class__+" class is not implemented")
 
-class nhIntegrator(integrator):
+class nhIntegrator(integrator): Nosehover-leapfrog
     def scaleVel(self, sys):
         freetemp = 2.0 / const.gas_constant / 1000.0 * sys.mu * sys.newvel ** 2  # t+0.5Dt
         self.oldxi = self.xi  # t-0.5Dt

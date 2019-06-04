@@ -6,6 +6,7 @@ import numpy as np
 import typing as t
 import math
 import scipy.constants as const
+from collections.abc import Iterable
 
 class potentialCls:
     '''
@@ -16,11 +17,10 @@ class potentialCls:
         return
 
     def _check_positions_type(self, positions:t.List[float])->t.List[float]:
-        if (any([type(positions) == typ for typ in [float, int, str]])):
-            positions = [float(positions)]
-        elif(type(positions) != list):
-            #print(positions)
+        if (isinstance(positions, Iterable)):
             positions = list(map(float, list(positions)))
+        else:
+            positions = [float(positions)]
         return positions
 
     def _calculate_energies(self, positions:t.List[float], *kargs):
@@ -94,10 +94,10 @@ class harmonicOsc1D(potentialCls):
         self.y_shift = y_shift
 
     def _calculate_energies(self, positions:t.List[float], *kargs) -> (t.List[float]):
-        return [0.5 * self.fc * (pos - self.x_shift) ** 2 - self.y_shift for pos in positions]
+        return list(map(lambda pos: 0.5 * self.fc * (pos - self.x_shift) ** 2 - self.y_shift, positions))
 
     def _calculate_dhdpos(self, positions:t.List[float], *kargs) -> (t.List[float]):
-        return [self.fc * (pos - self.x_shift) for pos in positions]
+        return list(map(lambda pos: self.fc * (pos - self.x_shift), positions))
 
 
 class lennardJonesPotential(potentialCls):
@@ -190,7 +190,9 @@ class perturbedPotentialCls(potentialCls):
         :return: energy
         '''
         positions = self._check_positions_type(positions)
-        return self._calculate_energies(positions, lam=self.lam)
+        enes =  self._calculate_energies(positions)
+        return enes
+
 
     def dhdpos(self, positions:(t.List[float] or float)) -> (t.List[float] or float):
         '''
@@ -200,7 +202,7 @@ class perturbedPotentialCls(potentialCls):
         :return: derivative dh/dpos
         '''
         positions = self._check_positions_type(positions)
-        return self._calculate_dhdpos(positions, lam=self.lam)
+        return self._calculate_dhdpos(positions)
 
     def dhdlam(self, positions:(t.List[float] or float)) -> (t.List[float] or float):
         '''
@@ -210,7 +212,7 @@ class perturbedPotentialCls(potentialCls):
         :return: derivative dh/dlan
         '''
         positions = self._check_positions_type(positions)
-        return self._calculate_dhdlam(positions, lam=self.lam)
+        return self._calculate_dhdlam(positions)
 
 
 class pertHarmonicOsc1D(perturbedPotentialCls):
@@ -249,14 +251,18 @@ class linCoupledHosc(perturbedPotentialCls):
         self.ha = ha
         self.hb = hb
         self.lam = lam
-    def _calculate_energies(self, positions:(t.List[float] or float), lam:float=1.0) -> (t.List[float] or float):
-        return [(1.0 - self.lam) * self.ha.ene(lam, pos) + lam * self.hb.ene(lam, pos) for pos in positions]
+        self.couple_H = lambda Vab_t: (1.0 - self.lam) * Vab_t[0] + self.lam * Vab_t[1]
 
-    def _calculate_dhdpos(self, positions:(t.List[float] or float), lam:float=1.0) -> (t.List[float] or float):
-        return [(1.0 - lam) * self.ha.dhdpos(lam, pos) + lam * self.hb.dhdpos(lam, pos) for pos in positions]
 
-    def _calculate_dhdlam(self, positions:(t.List[float] or float), lam:float=1.0) -> (t.List[float] or float):
-        return [self.hb.ene(lam, pos) - self.ha.ene(lam, pos) for pos in positions]
+    def _calculate_energies(self, positions:(t.List[float] or float)) -> (t.List[float] or float):
+        return list(map(self.couple_H,  zip(self.ha.ene(positions), self.hb.ene(positions))))
+
+    def _calculate_dhdpos(self, positions:(t.List[float] or float)) -> (t.List[float] or float):
+        return list(map(self.couple_H,  zip(self.ha.dhdpos(self.lam, positions), self.hb.dhdpos(self.lam, positions))))
+
+    def _calculate_dhdlam(self, positions:(t.List[float] or float)) -> (t.List[float] or float):
+        return list(map(lambda Va_t, Vb_t: Vb_t-Va_t, self.ha.dhdpos(self.lam, positions), self.hb.dhdpos(self.lam, positions)))
+
 
 
 class expCoupledHosc(perturbedPotentialCls):
@@ -269,23 +275,22 @@ class expCoupledHosc(perturbedPotentialCls):
         self.beta = const.gas_constant/1000.0 * temp
         self.lam = lam
 
-    def _calculate_energies(self, positions:(t.List[float] or float), lam:float=1.0) -> (t.List[float] or float):
-        return [-1.0 / (self.beta * self.s) * np.log(
-            self.lam * np.exp(-self.beta * self.s * self.hb.ene(lam, pos)) + (1.0 - lam) * np.exp(
-                -self.beta * self.s * self.ha.ene(lam, pos))) for pos in positions]
+        self.couple_H = lambda V_t: -1.0 / (self.beta * self.s) * np.log(
+            self.lam * np.exp(-self.beta * self.s * V_t[0]) + (1.0 - self.lam) * np.exp(-self.beta * self.s * V_t[1]))
+        self.couple_H_dhdpos = lambda V_t: self.lam * V_t[1] * np.exp(-self.beta * self.s * V_t[1]) + (1.0 - self.lam) * V_t[0] * np.exp(-self.beta * self.s *V_t[0])
+        self.couple_H_dhdlam = lambda V_t: -1.0 / (self.beta * self.s) * 1.0 / (self.lam * np.exp(-self.beta * self.s * V_t[1]) + (1.0 - self.lam) * np.exp(-self.beta * self.s * V_t[0])) * (np.exp(-self.beta * self.s * V_t[1]) - np.exp(-self.beta * self.s *V_t[0]))
+
+    def _calculate_energies(self, positions:(t.List[float] or float)) -> (t.List[float] or float):
+        return list(map(self.couple_H, zip(self.ha.ene(positions),self.hb.ene(positions))))
 
     def _calculate_dhdpos(self, positions:(t.List[float] or float), lam:float=1.0) -> (t.List[float] or float):
-        return [1.0 / (lam * np.exp(-self.beta * self.s * self.hb.ene(lam, pos)) + (1.0 - lam) *
-                      np.exp(-self.beta * self.s * self.ha.ene(lam, pos))) * \
-               (lam * self.hb.dhdpos(lam, pos) * np.exp(-self.beta * self.s * self.hb.ene(lam, pos)) + (1.0 - lam) *
-                self.ha.dhdpos(lam, pos) * np.exp(-self.beta * self.s * self.ha.ene(lam, pos))) for pos in positions]
+        return list(map(self.couple_H_dhdpos, zip(self.ha.ene(positions),self.hb.ene(positions))))
 
     def _calculate_dhdlam(self, positions:(t.List[float] or float), lam:float=1.0) -> (t.List[float] or float):
-        return [-1.0 / (self.beta * self.s) * 1.0 / (
-                lam * np.exp(-self.beta * self.s * self.hb.ene(lam, pos)) + (1.0 - lam) * np.exp(
-            -self.beta * self.s * self.ha.ene(lam, pos))) * (
-                       np.exp(-self.beta * self.s * self.hb.ene(lam, pos)) - np.exp(
-                   -self.beta * self.s * self.ha.ene(lam, pos))) for pos in positions]
+        return list(map(self.couple_H_dhdlam, zip(self.ha.ene(positions),self.hb.ene(positions))))
+
+
+
 
 
 
