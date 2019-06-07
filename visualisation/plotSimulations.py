@@ -2,7 +2,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 from matplotlib.figure import figaspect
 
-from src.system import system
+from ConveyorBelt.src.system import system
 
 
 def static_sim_plots(sys: system, x_range: tuple = None, title: str = "", out_path: str = None) -> str:

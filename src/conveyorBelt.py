@@ -1,7 +1,7 @@
 import numpy as np
 import scipy.constants as const
 import copy
-from src import system, potential1D
+from ConveyorBelt.src import system, potential1D
 
 
 class ConveyorBelt:

@@ -6,10 +6,10 @@ Module: System
 import numpy as np
 from typing import List
 import scipy.constants as const
-from src import dataStructure as data
-from src.potential1D import potentialCls, perturbedPotentialCls
-from src.integrator import integrator as integratorCls
-from src.conditions.conditions import condition
+from ConveyorBelt.src import dataStructure as data
+from ConveyorBelt.src.potential1D import potentialCls, perturbedPotentialCls
+from ConveyorBelt.src.integrator import integrator as integratorCls
+from ConveyorBelt.src.conditions.conditions import condition
 
 class system:
     '''
@@ -38,7 +38,7 @@ class system:
     _currentTotPot:float = None
     _currentTotKin:float = None
     _currentPosition:float = None
-    _currentVellocities:float = None
+    _currentVelocities:float = None
     _currentForce:float = None
     _currentTemperature:float = None
         
@@ -72,7 +72,7 @@ class system:
 
     def init_state(self):
         self._currentForce = 0
-        self._currentVellocities = 0
+        self._currentVelocities = 0
         self.currentState = self.state(self._currentPosition, self._currentTemperature,0, 0, 0, 0, 0)
 
         self.updateEne()
@@ -80,11 +80,11 @@ class system:
         self.currentState =  self.state(self._currentPosition, self.temperature,
                                         (self._currentTotKin+self._currentTotPot),
                                         self._currentTotPot, self._currentTotKin,
-                                        self._currentForce, self._currentVellocities)
+                                        self._currentForce, self._currentVelocities)
 
     def append_state(self, newPosition, newVelocity, newForces):
         self._currentPosition = newPosition
-        self._currentVellocities = newVelocity
+        self._currentVelocities = newVelocity
         self._currentForce = newForces
 
         self.updateEne()
@@ -93,7 +93,7 @@ class system:
         self.currentState = self.state(self._currentPosition, self.temperature,
                                        self._currentTotKin + self._currentTotPot,
                                        self._currentTotPot, self._currentTotKin,
-                                       self._currentForce, self._currentVellocities)
+                                       self._currentForce, self._currentVelocities)
 
         self.trajectory.append(self.currentState)
 
@@ -108,7 +108,7 @@ class system:
         if(withdrawTraj):
             self.trajectory = []
             
-        if(self._currentVellocities == None or initSystem):
+        if(self._currentVelocities == None or initSystem):
             self.initVel()
         
         if(self._currentPosition == None or initSystem):
@@ -136,7 +136,7 @@ class system:
             self.currentState =  self.state(self._currentPosition, self.temperature,
                                             self._currentTotKin + self._currentTotPot,
                                             self._currentTotPot, self._currentTotKin,
-                                            self._currentForce, self._currentVellocities)
+                                            self._currentForce, self._currentVelocities)
 
 
         if(show_progress): print("100%")
@@ -155,9 +155,9 @@ class system:
         return posShift
 
     def initVel(self):
-        self._currentVellocities = np.sqrt(const.gas_constant / 1000.0 * self.temperature / self.mass) * np.random.normal()
-        self.veltemp = self.mass / const.gas_constant / 1000.0 * self._currentVellocities ** 2  # t
-        return self._currentVellocities
+        self._currentVelocities = np.sqrt(const.gas_constant / 1000.0 * self.temperature / self.mass) * np.random.normal()
+        self.veltemp = self.mass / const.gas_constant / 1000.0 * self._currentVelocities ** 2  # t
+        return self._currentVelocities
 
     def updateTemp(self, temperature:float):
         self.temperature = temperature
@@ -170,8 +170,8 @@ class system:
         self._currentTotKin = self.totKin()
 
     def totKin(self):
-        if(self._currentVellocities != None):
-            return 0.5 * self.mass * self._currentVellocities ** 2
+        if(self._currentVelocities != None):
+            return 0.5 * self.mass * self._currentVelocities ** 2
         else:
             return 0
 
@@ -182,7 +182,7 @@ class system:
         return self.potential.ene(self._currentPosition)
 
     def propagate(self):
-        self._currentPosition, self._currentVellocities, self._currentForce = self.integrator.step(self) #self.current_state)
+        self._currentPosition, self._currentVelocities, self._currentForce = self.integrator.step(self) #self.current_state)
 
     def revertStep(self):
         self.currentState = self.trajectory[-2]
@@ -226,7 +226,7 @@ class perturbedSystem(system):
         self.currentState = self.state(position=self._currentPosition, temperature=self.temperature,
                                        totEnergy=(self._currentTotKin + self._currentTotPot),
                                        totPotEnergy=self._currentTotPot, totKinEnergy=self._currentTotKin,
-                                       dhdpos=self._currentForce, velocity=self._currentVellocities,
+                                       dhdpos=self._currentForce, velocity=self._currentVelocities,
                                        lamb=self._currentLam, dhdlam=0)
 
         
