@@ -5,7 +5,7 @@ from matplotlib import pyplot as plt
 
 from src.system import system
 
-def animation_trajectory(sys: system, x_range=None, title:str=None, out_path:str=None, out_writer:str="pillow")-> (animation.Animation, (str or None)):
+def animation_trajectory(sys: system, x_range=None, title:str=None, out_path:str=None, out_writer:str="pillow", dpi:int=100)-> (animation.Animation, (str or None)):
     # plotting
     x1data = [state.position for state in sys.trajectory]
     y1data = [state.totPotEnergy for state in sys.trajectory]
@@ -84,9 +84,9 @@ def animation_trajectory(sys: system, x_range=None, title:str=None, out_path:str
         # Set up formatting for the movie files
         Writer = animation.writers[out_writer]
         writer = Writer(fps=15, metadata=dict(artist='animationsMD1D_David_Hahn_Benjamin_Schroeder'), bitrate=1800)
-        ani.save(out_path, writer=writer)
+        ani.save(out_path, writer=writer, dpi=dpi)
 
-    return ani, out_path    
+    return ani, out_path
 
 def animation_EDS_trajectory(sys: system, x_range=None, title:str=None, out_path:str=None, hide_legend:bool=True,
                              s_values:list=[1.0], step_size:float=1, out_writer:str="pillow")-> (animation.Animation, (str or None)):

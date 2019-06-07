@@ -355,8 +355,9 @@ def plot_envelopedPotential_2State_System(eds_potential:pot.envelopedPotential, 
     labels = ["State_" + str(ind) for ind in range(1, len(energy_Vis) + 1)] + ["State_R"]
 
     #plot the line potentials
-    for ax, y, label in zip(axes, y_values, labels):
-        ax.plot(positions, y)
+    colors = ["steelblue", "orange", "forestgreen"]
+    for ax, y, label,c in zip(axes, y_values, labels,colors):
+        ax.plot(positions, y, c)
         ax.set_xlim(min(positions), max(positions))
         ax.set_ylim([V_min, V_max])
         ax.set_title("Potential $"+label+"$")
