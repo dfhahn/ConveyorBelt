@@ -2,11 +2,10 @@ import os
 import numpy as np
 from matplotlib import animation
 from matplotlib import pyplot as plt
-from IPython.display import HTML
 
 from src.system import system
 
-def animation_trajectory(sys: system, x_range=None, title:str=None, out_path:str=None)-> (animation.Animation, (str or None)):
+def animation_trajectory(sys: system, x_range=None, title:str=None, out_path:str=None, out_writer:str="pillow")-> (animation.Animation, (str or None)):
     # plotting
     x1data = [state.position for state in sys.trajectory]
     y1data = [state.totPotEnergy for state in sys.trajectory]
@@ -82,16 +81,15 @@ def animation_trajectory(sys: system, x_range=None, title:str=None, out_path:str
     ani = animation.FuncAnimation(fig=fig, func=run, frames=data_gen, init_func=init, blit=False,
                                   interval=20, repeat=False, save_count=len(x1data))
     if(out_path != None):
-        if( not "mp4" in os.path.splitext(out_path)[1]):
-            out_path += ".mp4"
         # Set up formatting for the movie files
-        Writer = animation.writers['ffmpeg']
-        writer = Writer(fps=15, metadata=dict(artist='animationsMD1D'), bitrate=1800)
-        ani.save('lines.mp4', writer=writer)
+        Writer = animation.writers[out_writer]
+        writer = Writer(fps=15, metadata=dict(artist='animationsMD1D_David_Hahn_Benjamin_Schroeder'), bitrate=1800)
+        ani.save(out_path, writer=writer)
 
-    return ani, out_path
+    return ani, out_path    
 
-def animation_EDS_trajectory(sys: system, x_range=None, title:str=None, out_path:str=None, s_values:list=[1.0])-> (animation.Animation, (str or None)):
+def animation_EDS_trajectory(sys: system, x_range=None, title:str=None, out_path:str=None, hide_legend:bool=True,
+                             s_values:list=[1.0], step_size:float=1, out_writer:str="pillow")-> (animation.Animation, (str or None)):
     # plotting
     x1data = [state.position for state in sys.trajectory]
     y1data = [state.totPotEnergy for state in sys.trajectory]
@@ -104,9 +102,8 @@ def animation_EDS_trajectory(sys: system, x_range=None, title:str=None, out_path
     else:
         xtot_space = np.arange(min(x_range), max(x_range) + 1, 1)
 
-    tmax = len(y1data) - 1
+    tmax = len(y1data) - 1-step_size
     t0 = 0
-    step_size = 1
 
     xdata, ydata = [], []
 
@@ -116,7 +113,8 @@ def animation_EDS_trajectory(sys: system, x_range=None, title:str=None, out_path
 
     from visualisation.plotPotentials import envPot_differentS_overlay_plot
 
-    _, ax = envPot_differentS_overlay_plot(eds_potential=sys.potential, s_values=s_values, positions=xtot_space, axes=ax)
+    _, ax = envPot_differentS_overlay_plot(eds_potential=sys.potential, s_values=s_values,
+                                           positions=xtot_space, axes=ax, hide_legend=hide_legend)
 
     # data structures in ani
     #line, = ax.plot([], [], c="skyblue", lw=2)
@@ -154,7 +152,7 @@ def animation_EDS_trajectory(sys: system, x_range=None, title:str=None, out_path
         # update the data
         x, V = data
 
-        if (x == x1data[-1]):  # last step of traj
+        if (x == x1data[-1-step_size]):  # last step of traj
             curr_p.set_data([], [])
             end_p.set_data(x1data[-1], y1data[-1])
         else:
@@ -170,11 +168,10 @@ def animation_EDS_trajectory(sys: system, x_range=None, title:str=None, out_path
     ani = animation.FuncAnimation(fig=fig, func=run, frames=data_gen, init_func=init, blit=False,
                                   interval=20, repeat=False, save_count=len(x1data))
     if(out_path != None):
-        if( not "mp4" in os.path.splitext(out_path)[1]):
-            out_path += ".mp4"
         # Set up formatting for the movie files
-        Writer = animation.writers['ffmpeg']
-        writer = Writer(fps=15, metadata=dict(artist='animationsMD1D'), bitrate=1800)
-        ani.save('lines.mp4', writer=writer)
+        Writer = animation.writers[out_writer]
+        writer = Writer(fps=15, metadata=dict(artist='animationsMD1D_David_Hahn_Benjamin_Schroeder'), bitrate=1800)
+        print(out_path)
+        ani.save(out_path, writer=writer)
 
     return ani, out_path

@@ -1,5 +1,8 @@
-from src import potential1D as pot
 from matplotlib import pyplot as plt
+from matplotlib import colorbar
+
+from src import potential1D as pot
+import numpy as np
 
 #UTIL FUNCTIONS
 def significant_decimals(s:float)->float:
@@ -13,6 +16,177 @@ def significant_decimals(s:float)->float:
                 return round(s, significant_decimal)
     else:
         return s
+
+def plot_1DPotential(potential:pot.potentialCls, positions:list,
+                     x_range=None, y_range=None, title:str=None, ax=None):
+    # generat Data
+    energies = potential.ene(positions=positions)
+
+    # is there already a figure?
+    if (ax == None):
+        fig = plt.figure()
+        ax = fig.add_subplot(111)
+    else:
+        fig = None
+
+    # plot
+    ax.plot(positions, energies)
+    ax.set_xlim(min(x_range), max(x_range)) if (x_range!=None) else ax.set_xlim(min(positions), max(positions))
+    ax.set_ylim(min(y_range), max(y_range)) if (y_range!=None) else ax.set_ylim(min(energies), max(energies))
+
+    ax.set_xlabel('$x$')
+    ax.set_ylabel('$Potential [kj]$')
+    ax.set_title(title) if (title != None) else ax.set_title("Potential "+str(potential.name))
+
+    if(ax != None):
+        return fig, ax
+    else:
+        return ax
+    pass
+
+def plot_1DPotential_dhdpos(potential:pot.potentialCls, positions:list,
+                     x_range=None, y_range=None, title:str=None, ax=None):
+    # generat Data
+    energies = potential.dhdpos(positions=positions)
+
+    # is there already a figure?
+    if (ax == None):
+        fig = plt.figure()
+        ax = fig.add_subplot(111)
+    else:
+        fig = None
+
+    # plot
+    ax.plot(positions, energies)
+    ax.set_xlim(min(x_range), max(x_range)) if (x_range!=None) else ax.set_xlim(min(positions), max(positions))
+    ax.set_ylim(min(y_range), max(y_range)) if (y_range!=None) else ax.set_ylim(min(energies), max(energies))
+
+    ax.set_xlabel('$x$')
+    ax.set_ylabel('$Potential [kj]$')
+    ax.set_title(title) if (title != None) else ax.set_title("Potential "+str(potential.name))
+
+    if(ax != None):
+        return fig, ax
+    else:
+        return ax
+    pass
+
+
+def plot_1DPotential_Term(potential: pot.potentialCls, positions: list,
+                          x_range=None, y_range=None, title: str = None, ax=None):
+    fig, axes = plt.subplots(nrows=1, ncols=2)
+    plot_1DPotential(potential=potential, positions=positions, ax=axes[0], x_range=x_range, y_range=y_range, title="Pot")
+    plot_1DPotential_dhdpos(potential=potential, positions=positions, ax=axes[1], x_range=x_range, y_range=y_range, title="dhdpos")
+    fig.tight_layout()
+    fig.suptitle(title) if(title!=None) else fig.suptitle("Potential "+str(potential.name))
+    return fig, axes
+
+def plot_1DPotential_Termoverlay(potential:pot.potentialCls, positions:list,
+                     x_range=None, y_range=None, title: str = None, ax=None):
+    #generate dat
+    energies = potential.ene(positions=positions)
+    dVdpos = potential.dhdpos(positions=positions)
+
+    # is there already a figure?
+    if (ax == None):
+        fig = plt.figure()
+        ax = fig.add_subplot(111)
+    else:
+        fig = None
+
+    ax.plot(positions, energies, label="V")
+    ax.plot(positions, list(map(abs, dVdpos)), label="absdVdpos")
+    ax.plot(positions, dVdpos, label="dVdpos")
+    ax.set_xlim(min(x_range), max(x_range)) if (x_range!=None) else ax.set_xlim(min(positions), max(positions))
+    ax.set_ylim(min(y_range), max(y_range)) if (y_range!=None) else ax.set_ylim(min([min(energies), min(dVdpos)]), max([max(energies), max(dVdpos)]))
+
+    ax.ylabel("$Potential/kJ$")
+    ax.xlabel("$x$")
+    ax.legend()
+    ax.set_title(title) if (title != None) else ax.set_title("Potential "+str(potential.__name__))
+
+    if(ax != None):
+        return fig, ax
+    else:
+        return ax
+
+def plot_2DEnergy_landscape( potential1:pot.potentialCls, potential2:pot.potentialCls, positions1:list, positions2:list=None,
+                           x_range=None, y_range=None, z_range=None, title:str=None, colbar:bool=False, ax=None):
+    #generat Data
+    energy_map = []
+    min_E, max_E = 0,0
+
+    if(type(positions2)==type(None)):
+        positions2 = positions2
+
+    for pos in positions2:
+        Va:float = potential2.ene(pos)[0]
+        Vb:list = potential1.ene(positions1)
+        Vtot = list(map(lambda x: x+Va, Vb))
+        energy_map.append(Vtot)
+
+        if(min(Vtot)<min_E):
+            min_E = min(Vtot)
+        if(max(Vtot)>max_E):
+            max_E = max(Vtot)
+
+    energy_map = np.array(energy_map)
+
+    #is there already a figure?
+    if(ax == None):
+        fig = plt.figure()
+        ax = fig.add_subplot(111)
+        colbar=True
+    else:
+        fig = None
+
+    if(z_range==None):
+        z_range = [min_E, max_E]
+
+    #plot
+    surf = ax.imshow(energy_map, cmap="viridis", interpolation="nearest",
+                     origin='center', extent=[min(positions1), max(positions1), min(positions2), max(positions2)],  vmax=max(z_range), vmin=min(z_range), aspect="auto")
+
+    if(colbar and fig != None):
+        fig.colorbar(surf, aspect=5, label='Energy/kJ')
+
+    if(x_range): ax.set_xlim(min(x_range), max(x_range))
+    if(y_range): ax.set_ylim(min(y_range), max(y_range))
+
+    ax.set_xlabel('$x1$')
+    ax.set_ylabel('$x2$')
+    if(title): ax.set_title(title)
+    return fig, ax, surf
+
+
+def plot_2perturbedEnergy_landscape(potential:pot.perturbedPotentialCls, positions:list, lambdas:list,
+                                    x_range=None, lam_range=None, title:str=None, colbar:bool=False, ax=None):
+
+    energy_map_lin = []
+    for y in lambdas:
+        potential.set_lam(y)
+        energy_map_lin.append(potential.ene(positions))
+    energy_map_lin = np.array(energy_map_lin)
+
+    if(ax == None):
+        fig = plt.figure(figsize=(15,5))
+        ax = fig.add_subplot(111)
+        colbar=True
+    else:
+        fig = None
+
+    surf = ax.imshow(energy_map_lin, cmap="viridis", interpolation="nearest",
+                     origin='center', extent=[min(positions), max(positions), min(lambdas), max(lambdas)],  vmax=100, vmin=0, aspect="auto")
+
+    if(colbar):
+        colorbar.Colorbar(ax, surf, label='Energy')
+
+    if(x_range): ax.set_xlim(min(x_range), max(x_range))
+    if(lam_range): ax.set_ylim(min(lam_range), max(lam_range))
+    ax.set_xlabel('x')
+    ax.set_ylabel('$\lambda$')
+    if(title): ax.set_title(title)
+    return fig, ax, surf
 
 #show feature landscape per s
 def envPot_differentS_overlay_min0_plot(eds_potential:pot.envelopedPotential, s_values:list, positions:list,
