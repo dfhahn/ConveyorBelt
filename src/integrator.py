@@ -242,26 +242,25 @@ class positionVerletIntegrator(newtonianIntegrator):
 
     def step(self, system):
         #init
-        current_state = system.currentState
-
-        self.currentPosition = current_state.position
-        self.currentVelocity = current_state.velocity
+        currentPosition = system._currentPosition
+        currentVelocity = system._currentVelocities
 
         #calculation:
-        self.newForces = system.potential.dhdpos(self.currentPosition)[0]    #Todo: make multi particles possible
-        v_new = -self.newForces / system.mass * self.dt
-        self.newvel = 0.5* (self.currentVelocity + v_new)  #update velo
-        self.newpos = self.currentPosition + self.newvel*self.dt
+        newForces = system.potential.dhdpos(currentPosition)[0]    #Todo: make multi particles possible - use current forces!
+        velocity_new = currentVelocity - (newForces / system.mass * self.dt)
+        new_velocity = velocity_new #0.5 * (currentVelocity + velocity_new)  #update velo
+        new_position = currentPosition + new_velocity * self.dt
+
+
         if(self.verbose):
-            print("INTEGRATOR: current forces\t ", self.newForces)
-            print("INTEGRATOR: current Velocities\t ", self.currentVelocity)
-            print("INTEGRATOR: current_position\t ", self.currentPosition)
+            print("INTEGRATOR: current forces\t ", newForces)
+            print("INTEGRATOR: current Velocities\t ", currentVelocity)
+            print("INTEGRATOR: current_position\t ", currentPosition)
 
-            print("INTEGRATOR: newVel\t ", self.newvel)
-            print("INTEGRATOR: newPosition\t ", self.newpos)
+            print("INTEGRATOR: newVel\t ", new_velocity)
+            print("INTEGRATOR: newPosition\t ", new_position)
             print("\n")
-
-        return self.newpos, self.newvel, self.newForces
+        return new_position, new_velocity, newForces
 
 
 class leapFrogIntegrator(newtonianIntegrator):
@@ -277,10 +276,10 @@ class newtonIntegrator(integrator): #LEAPFROG
     def step(self, sys):
         sys.pos = sys.newpos  # t
         sys.force = -sys.pot.dhdpos(sys.lam, sys.pos)  # t
-        sys.oldvel = sys.newvel  # t - 0.5 Dt
-        sys.newvel += sys.force / sys.mu * self.dt  # t+0.5Dt
-        sys.vel = 0.5 * (sys.oldvel + sys.newvel)
-        sys.newpos += self.dt * sys.newvel  # t+Dt
+        sys.oldvel = sys.new_velocity  # t - 0.5 Dt
+        sys.new_velocity += sys.force / sys.mu * self.dt  # t+0.5Dt
+        sys.vel = 0.5 * (sys.oldvel + sys.new_velocity)
+        sys.newpos += self.dt * sys.new_velocity  # t+Dt
         sys.veltemp = sys.mu / const.gas_constant / 1000.0 * sys.vel ** 2  # t
         sys.updateEne()
         return [sys.pos, sys.vel, sys.veltemp, sys.totkin, sys.totpot, sys.totene, sys.lam, sys.dhdlam]
@@ -291,7 +290,7 @@ class newtonIntegrator(integrator): #LEAPFROG
 
 class nhIntegrator(integrator): Nosehover-leapfrog
     def scaleVel(self, sys):
-        freetemp = 2.0 / const.gas_constant / 1000.0 * sys.mu * sys.newvel ** 2  # t+0.5Dt
+        freetemp = 2.0 / const.gas_constant / 1000.0 * sys.mu * sys.new_velocity ** 2  # t+0.5Dt
         self.oldxi = self.xi  # t-0.5Dt
         self.xi += self.dt / (self.tau * self.tau) * (freetemp / sys.temp - 1.0)  # t+0.5t
         scale = 1.0 - self.xi * self.dt
@@ -300,11 +299,11 @@ class nhIntegrator(integrator): Nosehover-leapfrog
     def step(self, sys):
         sys.pos = sys.newpos  # t
         sys.force = -sys.pot.dhdpos(sys.lam, sys.pos)  # t
-        sys.oldvel = sys.newvel  # t - 0.5 Dt
-        sys.newvel += sys.force / sys.mu * self.dt  # t+0.5t
-        sys.newvel *= self.scaleVel(sys)
-        sys.vel = 0.5 * (sys.oldvel + sys.newvel)
-        sys.newpos += self.dt * sys.newvel  # t+Dt
+        sys.oldvel = sys.new_velocity  # t - 0.5 Dt
+        sys.new_velocity += sys.force / sys.mu * self.dt  # t+0.5t
+        sys.new_velocity *= self.scaleVel(sys)
+        sys.vel = 0.5 * (sys.oldvel + sys.new_velocity)
+        sys.newpos += self.dt * sys.new_velocity  # t+Dt
         sys.veltemp = sys.mu / const.gas_constant/1000.0 * sys.vel ** 2  # t
         sys.updateEne()
         return [sys.pos, sys.vel, sys.veltemp, sys.totkin, sys.totpot, sys.totene, sys.lam, sys.dhdlam]
@@ -324,13 +323,13 @@ class hmcIntegrator(integrator):
         oldvel = sys.vel
         sys.initVel()  # t-0.5Dt
         for i in range(self.steps):
-            sys.pos += self.dt * sys.newvel  # t
+            sys.pos += self.dt * sys.new_velocity  # t
             force = -sys.pot.dhdpos(sys.lam, sys.pos)  # t
-            sys.vel = (oldvel + sys.newvel) / 2.0
+            sys.vel = (oldvel + sys.new_velocity) / 2.0
             sys.veltemp = sys.mu / const.gas_constant / 1000.0 * sys.vel ** 2  # t
             sys.updateEne()
-            oldvel = sys.newvel
-            sys.newvel += force / sys.mu * self.dt  # t+0.5t
+            oldvel = sys.new_velocity
+            sys.new_velocity += force / sys.mu * self.dt  # t+0.5t
         accept = 0
         if sys.totene < oldene:
             accept = 1

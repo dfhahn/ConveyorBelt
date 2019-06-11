@@ -1,5 +1,5 @@
-from src.system import system as sys
-from src.conditions.conditions import condition
+from ConveyorBelt.src.system import system as sys
+from ConveyorBelt.src.conditions.conditions import condition
 
 class thermostat(condition):
     """
@@ -43,14 +43,14 @@ class berendsenThermostate(thermostat):
                   'THERMOSTAT: tot_kin: ', self.system.totKin(),"\n"
                   "THERMOSTAT: curr temp: ", self._current_temperatur,"\n"
                   "THERMOSTAT: lambda: ", self._lambda,"\n"
-                  "THERMOSTAT: current_Velocity: ", self.system._currentVellocities,"\n"
+                  "THERMOSTAT: current_Velocity: ", self.system._currentVelocities, "\n"
                   "\n")
 
     def _rescale_velocities(self):
-        orig_vels = self.system._currentVellocities
+        orig_vels = self.system._currentVelocities
         #new_vels = [self._lambda * velocity for velocity in orig_vels]
         new_vels = self._lambda * orig_vels if(self._lambda * orig_vels) else 0.0001    #do not allow 0 vel
-        self.system._currentVellocities = new_vels
+        self.system._currentVelocities = new_vels
 
     def _calculate_current_temperature(self):
         """

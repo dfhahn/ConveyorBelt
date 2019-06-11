@@ -1,7 +1,7 @@
 from matplotlib import pyplot as plt
 from matplotlib import colorbar
 
-from src import potential1D as pot
+from ConveyorBelt.src import potential1D as pot
 import numpy as np
 
 #UTIL FUNCTIONS
@@ -246,7 +246,11 @@ def envPot_differentS_overlay_plot(eds_potential:pot.envelopedPotential, s_value
     axes.set_xlim(min(positions),max(positions))
     axes.set_ylabel("Vr/[kJ]")
     axes.set_xlabel("r")
-    axes.set_title("different Vrs with different s-values overlayed ")
+    if(title ==None):
+        axes.set_title("different $V_{r}$s with different s-values overlayed ")
+    else:
+        axes.set_title(title)
+
 
     ##optionals
     if (y_range != None): axes.set_ylim(y_range)

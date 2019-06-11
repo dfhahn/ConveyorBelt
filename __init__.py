@@ -1,3 +1,3 @@
-from src import conveyorBelt, ensemble, integrator, potential1D, system
-import visualisation
+from ConveyorBelt.src import ensemble, integrator, potential1D, system
+from ConveyorBelt import visualisation
 

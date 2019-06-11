@@ -449,9 +449,9 @@ class envelopedPotential(potentialCls):
         ###CHECK!THIS FUNC!!! not correct
         V_R_ene = self.ene(positions)
         V_Is_ene = [statePot.ene(state_pos) for statePot, state_pos in zip(self.V_is, positions)]
-        V_Is_dhdpos = [statePot.ene(state_pos) for statePot, state_pos in zip(self.V_is, positions)]
+        V_Is_dhdpos = [statePot.dhdpos(state_pos) for statePot, state_pos in zip(self.V_is, positions)]
         dhdpos=[]
-        #print("pos:\tprefactor\tV")
+
         for position in range(len(positions[0])):
             dhdpos_R = 0
             dhdpos_state=[]
