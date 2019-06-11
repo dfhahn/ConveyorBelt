@@ -205,35 +205,12 @@ class newtonianIntegrator(integrator):
     dt:float
 
 class verlocityVerletIntegrator(newtonianIntegrator):
-    def __init__(self, dt=0.0005):
-        self.dt = dt
+    """
+        .. autoclass:: Verlocity Verlet Integrator,
+        is not implemented yet
+    """
 
-    def step(self, system):
-        #init
-        last_state = system.trajectory[-1]
-        self.lastForces = last_state.dhdpos
-
-        current_state = system.currentState
-        self.currentPosition =current_state.position
-        self.currentVelocity = current_state.velocity
-        self.currentForces = system.potential.dhdpos(self.currentPosition)[0]    #Todo: make multi particles possible
-
-
-        self.newForces = 0.5*(self.currentForces+self.lastForces)
-        self.newVelocities = self.newForces / system.mass * self.dt  # t+0.5Dt
-        self.newPositions = self.currentPosition + self.newVelocities * self.dt
-
-        if(self.verbose):
-            print("INTEGRATOR: current forces\t ", self.newForces)
-            print("INTEGRATOR: current velocities\t ", self.currentVelocity)
-            print("INTEGRATOR: current position\t ", self.currentPosition)
-
-            print("INTEGRATOR: new forces\t ", self.newForces)
-            print("INTEGRATOR: new velocities\t ", self.newVelocities)
-            print("INTEGRATOR: new position\t ", self.newPositions)
-            print("\n")
-
-        return self.newPositions, self.newVelocities, self.newForces
+    pass
 
 class positionVerletIntegrator(newtonianIntegrator):
 

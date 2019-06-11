@@ -5,13 +5,7 @@ from matplotlib import pyplot as plt
 
 from ConveyorBelt.src.system import system
 
-<<<<<<< HEAD
 def animation_trajectory(sys: system, x_range=None, title:str=None, out_path:str=None, out_writer:str="pillow", dpi:int=100)-> (animation.Animation, (str or None)):
-=======
-
-def animation_trajectory(sys: system, x_range=None, title: str = None, out_path: str = None, out_writer: str = "pillow") -> (
-animation.Animation, (str or None)):
->>>>>>> 82439cd004ee34809bfed15e5e752afba8dd3a6b
     # plotting
     x1data = [state.position for state in sys.trajectory]
     y1data = [state.totPotEnergy for state in sys.trajectory]
