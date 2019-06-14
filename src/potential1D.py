@@ -125,23 +125,27 @@ class wavePotential(potentialCls):
         initializes wavePotential potential class
         '''
         super().__init__()
-        self.phase_shift = phase_shift
         self.amplitude = amplitude
         self.multiplicity = multiplicity
         self.set_radians(radians)
+        if(radians):
+            self.phase_shift = phase_shift
+        else:
+            self.phase_shift = np.deg2rad(phase_shift)
 
     def set_degrees(self, degrees:bool=True):
         self.set_radians(radians=not degrees)
     def set_radians(self, radians:bool=True):
         self.radians=radians
         if(radians):
-            self._calculate_energies = lambda positions: list(map(lambda x: self.amplitude*math.sin(self.multiplicity*(x + self.phase_shift)), positions))
+            self._calculate_energies = lambda positions: list(map(lambda x: self.amplitude*math.cos(self.multiplicity*(x + self.phase_shift)), positions))
             self._calculate_dhdpos = lambda positions: list(map(lambda x: self.amplitude*math.sin(self.multiplicity*(x + self.phase_shift)), positions))
         else:
             self._calculate_energies = lambda positions: list(
-                map(lambda x: self.amplitude * math.sin(self.multiplicity * (x + self.phase_shift)), np.deg2rad(positions)))
+                map(lambda x: self.amplitude * math.cos(self.multiplicity * (x + self.phase_shift)), np.deg2rad(positions)))
             self._calculate_dhdpos = lambda positions: list(
                 map(lambda x: self.amplitude * math.sin(self.multiplicity * (x + self.phase_shift)), np.deg2rad(positions)))
+
 class torsionPotential(potentialCls):
     '''
         .. autoclass:: Torsion Potential

@@ -111,13 +111,13 @@ def plot_1DPotential_Termoverlay(potential:pot.potentialCls, positions:list,
         return ax
 
 def plot_2DEnergy_landscape( potential1:pot.potentialCls, potential2:pot.potentialCls, positions1:list, positions2:list=None,
-                           x_range=None, y_range=None, z_range=None, title:str=None, colbar:bool=False, ax=None):
+                           x_range=None, y_range=None, z_range=None, title:str=None, colbar:bool=False, ax=None, cmap:str="inferno"):
     #generat Data
     energy_map = []
     min_E, max_E = 0,0
 
     if(type(positions2)==type(None)):
-        positions2 = positions2
+        positions2 = positions1
 
     for pos in positions2:
         Va:float = potential2.ene(pos)[0]
@@ -144,7 +144,7 @@ def plot_2DEnergy_landscape( potential1:pot.potentialCls, potential2:pot.potenti
         z_range = [min_E, max_E]
 
     #plot
-    surf = ax.imshow(energy_map, cmap="viridis", interpolation="nearest",
+    surf = ax.imshow(energy_map, cmap=cmap, interpolation="nearest",
                      origin='center', extent=[min(positions1), max(positions1), min(positions2), max(positions2)],  vmax=max(z_range), vmin=min(z_range), aspect="auto")
 
     if(colbar and fig != None):
@@ -370,7 +370,7 @@ def plot_envelopedPotential_2State_System(eds_potential:pot.envelopedPotential, 
 
     #plot phase space surface
     ax = axes[-1]
-    surf = ax.imshow(energy_map, cmap="viridis", interpolation="nearest",
+    surf = ax.imshow(energy_map, cmap="inferno", interpolation="nearest",
                      origin='center', extent=[ min(positions), max(positions), min(positions), max(positions)],
                      vmax=V_max, vmin=V_min)
     ax.set_xlabel("$r_{"+labels[0]+"}$")
