@@ -14,6 +14,7 @@ class potentialCls:
     '''
 
     name:str = "Unknown"
+    nDim:int =1
     def __init__(self, *kargs):
         return
 
@@ -389,7 +390,6 @@ class pertHarmonicOsc1D(perturbedPotentialCls):
 """
     ENVELOPED POTENTIALS
 """
-
 class envelopedPotential(potentialCls):
     """
     .. autoclass:: envelopedPotential
@@ -417,22 +417,32 @@ class envelopedPotential(potentialCls):
                 "Energy offset Vector and state potentials don't have the same length!\n states in Eoff " + str(
                     len(Eoff_i)) + "\t states in Vi" + str(len(V_is)))
 
+        #Todo: think about n states with each m dims.
+        self.nDim = V_is[0].nDim
+        if(any([V.nDim != self.nDim for V in V_is])):
+            raise Exception("Not all endstates have the same dimensionality! This is not imnplemented.\n Dims: "+str([V.nDim != nDim for V in V_is]))
+
         self.V_is = V_is
         self.s = s
         self.Eoff_i = Eoff_i
 
     #each state gets a position list
     def _check_positions_type(self, positions:t.List[float])->t.List[float]:
-        if (any([type(positions) == typ for typ in [float, int, str]])):
-            positions = [float(positions) for state in range(self.numStates+1)]
-        elif(type(positions[0]) != list):
+        if (type(positions) in [float, int, str]):
+            if(len(positions) != self.numStates):
+                positions = [positions for state in range(self.numStates + 1)]
+            else:
+                positions = [float(positions) for state in range(self.numStates+1)]
+        elif(isinstance(positions, Iterable)):
             if(len(positions)!= self.numStates):
-                positions = [list(map(float, list(positions))) for state in range(self.numStates)]
-            else:   #TODO BULLSHIT CODE@!
-                #flattening
-                return  positions
-        elif(len(positions) != self.numStates):
-            positions = [positions for state in range(self.numStates+1)]
+                if (isinstance(positions[0], Iterable)):    # Ndimensional case
+                    positions = [list(map(lambda dimlist: np.array(list(map(float, dimlist))), positions)) for state in range(self.numStates)]
+                else:   #onedimensional
+                    positions = [list(map(float, positions)) for state in range(self.numStates)]
+            else:   #TODO: insert check here! for fitting numstates
+                return positions
+        else:
+            raise Exception("This is an unknown type of Data structure: "+str(type(positions))+"\n"+str(positions))
         return positions
 
     def _calculate_energies(self, positions:(t.List[float] or float), *kargs) -> list:
@@ -487,5 +497,89 @@ class envelopedDoubleWellPotential(envelopedPotential):
         V_is = [harmonicOsc1D(x_shift=x_shift, y_shift=y_shift, fc=fc)
                 for y_shift, x_shift, fc in zip(y_shifts, x_shifts, fcs)]
         super().__init__(V_is=V_is, s=smoothing)
+
+
+class envelopedPotentialMultiS(envelopedPotential):
+    """
+    .. autoclass:: envelopedPotential
+    """
+    V_is:t.List[potentialCls] = None
+    E_is:t.List[float] = None
+    numStates:int = None
+    s:t.List[float] = None
+
+    def __init__(self, V_is: t.List[potentialCls], s: t.List[float], Eoff_i: t.List[float] = None):
+        """
+
+        :param V_is:
+        :param s:
+        :param Eoff_i:
+        """
+        super(potentialCls).__init__()
+        self.numStates = len(V_is)
+        if (self.numStates < 2):
+            raise IOError("It does not make sense enveloping less than two potentials!")
+        if (Eoff_i == None):
+            Eoff_i = [0.0 for state in range(len(V_is))]
+
+        elif (len(Eoff_i) != self.numStates):
+            raise IOError(
+                "Energy offset Vector and state potentials don't have the same length!\n states in Eoff " + str(
+                    len(Eoff_i)) + "\t states in Vi" + str(len(V_is)))
+
+        # Todo: think about n states with each m dims.
+        self.nDim = V_is[0].nDim
+        if (any([V.nDim != self.nDim for V in V_is])):
+            raise Exception("Not all endstates have the same dimensionality! This is not imnplemented.\n Dims: " + str(
+                [V.nDim != nDim for V in V_is]))
+
+        self.V_is = V_is
+        self.s = s
+        self.Eoff_i = Eoff_i
+
+    def _calculate_energies(self, positions: (t.List[float] or float), *kargs) -> list:
+        partA = [-self.s[0] * (Vit - self.Eoff_i[0]) for Vit in self.V_is[0].ene(positions[0])]
+        partB = [-self.s[1] * (Vit - self.Eoff_i[1]) for Vit in self.V_is[1].ene(positions[1])]
+        sum_prefactors = [max(A_t, B_t) + math.log(1 + math.exp(min(A_t, B_t) - max(A_t, B_t))) for A_t, B_t in
+                          zip(partA, partB)]
+
+        # more than two states!
+        for state in range(2, self.numStates):
+            partN = [-self.s[state] * (Vit - self.Eoff_i[state]) for Vit in self.V_is[state].ene(positions[state])]
+            sum_prefactors = [max(sum_prefactors_t, N_t) + math.log(
+                1 + math.exp(min(sum_prefactors_t, N_t) - max(sum_prefactors_t, N_t))) for sum_prefactors_t, N_t in
+                              zip(sum_prefactors, partN)]
+
+        Vr = [- partitionF for state,partitionF in enumerate(sum_prefactors)]    #1/ float(self.s[0]) *
+        return Vr
+
+    def _calculate_dhdpos(self, positions: (t.List[float] or float), *kargs):
+        ###CHECK!THIS FUNC!!! not correct
+        V_R_ene = self.ene(positions)
+        V_Is_ene = [statePot.ene(state_pos) for statePot, state_pos in zip(self.V_is, positions)]
+        V_Is_dhdpos = [statePot.dhdpos(state_pos) for statePot, state_pos in zip(self.V_is, positions)]
+        dhdpos = []
+
+        for position in range(len(positions[0])):
+            dhdpos_R = 0
+            dhdpos_state = []
+            for V_state_ene, V_state_dhdpos in zip(V_Is_ene, V_Is_dhdpos):
+                # den = sum([math.exp(-const.k *Vstate[position]) for Vstate in V_Is_ene])
+                # prefactor = (math.exp(-const.k *V_state_ene[position]))/den if (den!=0) else 0
+                if (V_state_ene[position] == 0):
+                    prefactor = 0
+                else:
+                    prefactor = 1 - (V_state_ene[position] / (sum([Vstate[position] for Vstate in V_Is_ene]))) if (
+                                sum([Vstate[position] for Vstate in V_Is_ene]) != 0) else 0
+                # print(round(positions[0][position],2),"\t",round(prefactor,2),"\t" , round(V_state_dhdpos[position]), "\t", round(V_R_ene[position]))
+                dhdpos_state.append(prefactor * V_state_dhdpos[position])
+                dhdpos_R += prefactor * V_state_dhdpos[position]
+                dlist = [dhdpos_R]
+                dlist.extend(dhdpos_state)
+            dhdpos.append(dlist)
+        return dhdpos
+
+
 if __name__ == "__main__":
     pass
+

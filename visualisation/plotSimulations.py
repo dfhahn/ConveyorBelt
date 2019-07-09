@@ -2,6 +2,9 @@ import numpy as np
 from matplotlib import pyplot as plt
 from matplotlib.figure import figaspect
 
+import os, sys
+sys.path.append(os.path.dirname(__file__)+"/..")
+
 from ConveyorBelt.src.system import system
 
 

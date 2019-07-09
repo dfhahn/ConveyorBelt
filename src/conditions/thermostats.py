@@ -16,8 +16,7 @@ class thermostat(condition):
         self.system = system
         self.tau = tau
 
-    def coupleSystem(self, system:sys):
-        self.system = system
+
 
 class berendsenThermostate(thermostat):
     """

@@ -54,6 +54,7 @@ class system:
         self.initial_positions = position
         
         #dummy for calc E
+        self.nDim = potential.nDim
         if(position == None):
             position = self.randomPos()
 
@@ -108,10 +109,10 @@ class system:
         if(withdrawTraj):
             self.trajectory = []
             
-        if(self._currentVelocities == None or initSystem):
+        if(type(self._currentVelocities) == type(None) or initSystem):
             self.initVel()
         
-        if(self._currentPosition == None or initSystem):
+        if(type(self._currentPosition) == type(None) or initSystem):
             self._currentPosition = self.randomPos()
         
         self.updateEne()    #inti E
@@ -133,6 +134,7 @@ class system:
             self.applyConditions()
 
             #Set new State
+
             self.currentState =  self.state(self._currentPosition, self.temperature,
                                             self._currentTotKin + self._currentTotPot,
                                             self._currentTotPot, self._currentTotKin,
@@ -147,7 +149,7 @@ class system:
             aditional.apply()
 
     def randomPos(self):
-        pos = np.random.rand() * 20.0 - 10.0
+        pos = [[np.random.rand() * 20.0 - 10.0 for x in range(self.nDim)]]
         return pos
 
     def randomShift(self):

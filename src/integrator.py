@@ -92,7 +92,7 @@ class monteCarloIntegrator(integrator):
                 self.newPos = self.oldpos           #reject step outside of range
         return self.newPos, None, self.posShift
     
-    def randomShift(self)->float:
+    def randomShift(self, nDim)->float:
         """
         ..autofunction: randomShift
             This function calculates the shift for the current position.
@@ -101,20 +101,20 @@ class monteCarloIntegrator(integrator):
         :rtype: float
         """
         #which sign will the shift have?
-        sign = -1 if(np.random.randint(low=0, high=100) <50) else 1
+        sign = [-1 if(np.random.randint(low=0, high=100) <50) else 1 for x in range(nDim)]
         #Check if there is a space restriction? - converges faster
         if(self.spaceRange!=None):
-            shift = abs(np.random.randint(low=self.spaceRange[0]/self.resolution, high=self.spaceRange[1]/self.resolution)*self.resolution)
+            shift = [abs(np.random.randint(low=self.spaceRange[0]/self.resolution, high=self.spaceRange[1]/self.resolution)*self.resolution) for x in range(nDim)]
         else:
-            shift = abs(np.random.rand())
+            shift = [abs(np.random.rand()) for x in range(nDim)]
 
         #Is the step shift in the allowed area?
         if(self.maxStepSize != None and shift > self.maxStepSize):#is there a maximal step size?
-            self.posShift = sign*self.maxStepSize
+            self.posShift = np.multiply(sign, self.maxStepSize)
         elif(self.minStepSize != None and shift < self.minStepSize):
-            self.posShift = sign*self.minStepSize
+            self.posShift = np.multiply(sign, self.minStepSize)
         else:
-            self.posShift = sign*shift
+            self.posShift = np.multiply(sign, shift)
 
         return self.posShift
 
@@ -177,11 +177,12 @@ class metropolisMonteCarloIntegrator(monteCarloIntegrator):
         iterstep = 0
         current_state = system.currentState
         self.oldpos = current_state.position
+        nDim = system.nDim
         # integrate position
         while(True):    #while no value in spaceRange was found, terminates in first run if no spaceRange
-            self.randomShift()
+            self.randomShift(nDim)
             #eval new Energy
-            system._currentPosition = self.oldpos + self.posShift
+            system._currentPosition = np.add(self.oldpos, self.posShift)
             ene = system.totPot()
 
             #MetropolisCriterion

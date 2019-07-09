@@ -10,11 +10,11 @@ import scipy.constants as const
 from collections.abc import Iterable
 import typing as t
 from collections import Iterable
+
 class potentialNDCls:
     '''
     potential base class
     '''
-
     name:str = "Unknown"
     def __init__(self, *kargs):
         return
@@ -26,7 +26,7 @@ class potentialNDCls:
         if (isinstance(positions, Iterable) and all([isinstance(pos, Iterable) for pos in positions])):
             positions = list(map(lambda dim: list(map(float, dim)), list(positions)))
         else:
-            raise ValueError("Could not reed ndim array!")
+            raise ValueError("Could not reed ndim array!\n Given: \n"+str(positions))
         return positions
 
     def _calculate_energies(self, positions:t.List[float], *kargs):
@@ -56,7 +56,14 @@ class potentialNDCls:
         positions = self._check_positions_type(positions)
         return self._calculate_dhdpos(positions)
 
-class wavePotential2D(potentialNDCls):
+class potential2DCls(potentialNDCls):
+    '''
+    potential base class
+    '''
+    nDim:int =2
+
+
+class wavePotential2D(potential2DCls):
 
     '''
 
@@ -89,32 +96,27 @@ class wavePotential2D(potentialNDCls):
             self.phase_shift = np.deg2rad(phase_shift)
 
     def set_degrees(self, degrees:bool=True):
-
         self.set_radians(radians=not degrees)
 
-
     def set_radians(self, radians:bool=True):
-
         self.radians=radians
 
         if(radians):
-
             self._calculate_energies = lambda positions: list(map(lambda coords:
-                          sum([self.amplitude[ind]*math.cos(self.multiplicity[ind]*(x + self.phase_shift[ind])) for ind,x in enumerate(coords)]), zip(*positions)))
-
+                          sum([self.amplitude[ind]*math.cos(self.multiplicity[ind]*(x + self.phase_shift[ind])) for ind,x in enumerate(coords)]), positions))
 
             self._calculate_dhdpos =  lambda positions: list(map(lambda coords:
-                          sum([self.amplitude[ind]*math.sin(self.multiplicity[ind]*(x + self.phase_shift[ind])) for ind,x in enumerate(coords)]), zip(*positions)))
+                          sum([self.amplitude[ind]*math.sin(self.multiplicity[ind]*(x + self.phase_shift[ind])) for ind,x in enumerate(coords)]), positions))
 
         else:
             self._calculate_energies = lambda positions: list(map(lambda coords:
-                          sum([self.amplitude[ind]*math.cos(self.multiplicity[ind]*(x + self.phase_shift[ind])) for ind,x in enumerate(np.deg2rad(coords))]), zip(*positions)))
+                          sum([self.amplitude[ind]*math.cos(self.multiplicity[ind]*(x + self.phase_shift[ind])) for ind,x in enumerate(np.deg2rad(coords))]), positions))
 
             self._calculate_dhdpos =  lambda positions: list(map(lambda coords:
-                          sum([self.amplitude[ind]*math.sin(self.multiplicity[ind]*(x + self.phase_shift[ind])) for ind,x in enumerate(np.deg2rad(coords))]), zip(*positions)))
+                          sum([self.amplitude[ind]*math.sin(self.multiplicity[ind]*(x + self.phase_shift[ind])) for ind,x in enumerate(np.deg2rad(coords))]), positions))
 
 
-class torsionPotential2D(potentialNDCls):
+class torsionPotential2D(potential2DCls):
     '''
         .. autoclass:: Torsion Potential
     '''

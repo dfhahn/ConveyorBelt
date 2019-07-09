@@ -1,6 +1,9 @@
 from matplotlib import pyplot as plt
 from matplotlib import colorbar
 
+import os, sys
+sys.path.append(os.path.dirname(__file__)+"/..")
+
 from ConveyorBelt.src import potential1D as pot
 import numpy as np
 
@@ -331,6 +334,7 @@ def plot_envelopedPotential_2State_System(eds_potential:pot.envelopedPotential, 
 
     if(s_value!=None):
         eds_potential.s = s_value
+
     if (Eoffi != None):
         if (len(Eoffi) == len(eds_potential.V_is)):
             eds_potential.Eoff_i = Eoffi
@@ -343,12 +347,14 @@ def plot_envelopedPotential_2State_System(eds_potential:pot.envelopedPotential, 
     energy_Vis = [state.ene(positions) for state in eds_potential.V_is]
     energy_map = []
     min_e = 0
+
     for x in positions:
         row = eds_potential.ene([[x for i in positions], positions])
         row_cut = list(map(lambda x:  V_max if(V_max != None and x > V_max) else x, row))
         energy_map.append(row_cut)
         if(min(row)< min_e):
             min_e=min(row)
+
     if(V_min==None):
         V_min=min_e
 
