@@ -5,7 +5,7 @@ Module: Conditions
 
 #from ConveyorBelt.src.system import system as sys
 
-class condition:
+class Condition:
     _tau:float  #tau = apply every tau steps
 
     def __init__(self , sys):   #system):
@@ -16,3 +16,9 @@ class condition:
 
     def coupleSystem(self, system): #sys):
         self.system = system
+
+class Constraint(Condition):
+    pass
+
+class Restraint(Condition):
+    pass

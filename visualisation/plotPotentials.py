@@ -20,7 +20,7 @@ def significant_decimals(s:float)->float:
     else:
         return s
 
-def plot_1DPotential(potential:pot.potentialCls, positions:list,
+def plot_1DPotential(potential:pot._potentialCls, positions:list,
                      x_range=None, y_range=None, title:str=None, ax=None):
     # generat Data
     energies = potential.ene(positions=positions)
@@ -47,8 +47,8 @@ def plot_1DPotential(potential:pot.potentialCls, positions:list,
         return ax
     pass
 
-def plot_1DPotential_dhdpos(potential:pot.potentialCls, positions:list,
-                     x_range=None, y_range=None, title:str=None, ax=None):
+def plot_1DPotential_dhdpos(potential:pot._potentialCls, positions:list,
+                            x_range=None, y_range=None, title:str=None, ax=None):
     # generat Data
     energies = potential.dhdpos(positions=positions)
 
@@ -75,7 +75,7 @@ def plot_1DPotential_dhdpos(potential:pot.potentialCls, positions:list,
     pass
 
 
-def plot_1DPotential_Term(potential: pot.potentialCls, positions: list,
+def plot_1DPotential_Term(potential: pot._potentialCls, positions: list,
                           x_range=None, y_range=None, title: str = None, ax=None):
     fig, axes = plt.subplots(nrows=1, ncols=2)
     plot_1DPotential(potential=potential, positions=positions, ax=axes[0], x_range=x_range, y_range=y_range, title="Pot")
@@ -84,8 +84,8 @@ def plot_1DPotential_Term(potential: pot.potentialCls, positions: list,
     fig.suptitle(title) if(title!=None) else fig.suptitle("Potential "+str(potential.name))
     return fig, axes
 
-def plot_1DPotential_Termoverlay(potential:pot.potentialCls, positions:list,
-                     x_range=None, y_range=None, title: str = None, ax=None):
+def plot_1DPotential_Termoverlay(potential:pot._potentialCls, positions:list,
+                                 x_range=None, y_range=None, title: str = None, ax=None):
     #generate dat
     energies = potential.ene(positions=positions)
     dVdpos = potential.dhdpos(positions=positions)
@@ -113,8 +113,8 @@ def plot_1DPotential_Termoverlay(potential:pot.potentialCls, positions:list,
     else:
         return ax
 
-def plot_2DEnergy_landscape( potential1:pot.potentialCls, potential2:pot.potentialCls, positions1:list, positions2:list=None,
-                           x_range=None, y_range=None, z_range=None, title:str=None, colbar:bool=False, ax=None, cmap:str="inferno"):
+def plot_2DEnergy_landscape(potential1:pot._potentialCls, potential2:pot._potentialCls, positions1:list, positions2:list=None,
+                            x_range=None, y_range=None, z_range=None, title:str=None, colbar:bool=False, ax=None, cmap:str="inferno"):
     #generat Data
     energy_map = []
     min_E, max_E = 0,0
@@ -162,7 +162,7 @@ def plot_2DEnergy_landscape( potential1:pot.potentialCls, potential2:pot.potenti
     return fig, ax, surf
 
 
-def plot_2perturbedEnergy_landscape(potential:pot.perturbedPotentialCls, positions:list, lambdas:list,
+def plot_2perturbedEnergy_landscape(potential:pot._perturbedPotentialCls, positions:list, lambdas:list,
                                     x_range=None, lam_range=None, title:str=None, colbar:bool=False, ax=None):
 
     energy_map_lin = []

@@ -4,23 +4,25 @@ Module: System
 """
 
 import numpy as np
-from typing import List
+from typing import Iterable
+from numbers import Number
 import scipy.constants as const
 from ConveyorBelt.src import dataStructure as data
-from ConveyorBelt.src.potential1D import potentialCls, perturbedPotentialCls
+from ConveyorBelt.src.potential1D import _potentialCls, _perturbedPotentialCls
 from ConveyorBelt.src.integrator import integrator as integratorCls
-from ConveyorBelt.src.conditions.conditions import condition
+from ConveyorBelt.src.conditions.conditions import Condition
 
 class system:
     '''
-    Class of a (possibly perturbed) 1D system on a
-    potential energy surface defined by a potential1D.potential object.
+    ..autoclass:: Class of a system on a
+    potential energy surface defined by a potential1D._potentialCls object or other.
     Different integrators/propagators can be chosen to create an ensemble of states.
+    Also other parameters are tunable.
     '''
     state = data.basicState
 
     #settings:
-    potential:potentialCls = None
+    potential:_potentialCls = None
     integrator:integratorCls = None
     conditions=[]
     
@@ -28,11 +30,11 @@ class system:
     temperature:float = 298.0
     mass:float = 1 #for one particle systems!!!!
     nparticles:int =1 #Todo: adapt it to be multiple particles
-    initial_positions:List[float]
+    initial_positions:Iterable[float]
     
     #output
     currentState:state = None
-    trajectory:List = []
+    trajectory:Iterable = []
         
     #tmpvars - private:
     _currentTotPot:float = None
@@ -42,21 +44,19 @@ class system:
     _currentForce:float = None
     _currentTemperature:float = None
         
-    def __init__(self, potential:potentialCls, integrator:integratorCls, conditions:List[condition]=[],
+    def __init__(self, potential:_potentialCls, integrator:integratorCls, conditions:Iterable[Condition]=[],
                  temperature:float=298.0, position:float=None, mass:float=1):
+
+        #params
         self.potential = potential
         self.integrator = integrator
         self.conditions = conditions
         self.temperature = temperature
         self.mass = mass
 
-        #params
-        self.initial_positions = position
-        
-        #dummy for calc E
         self.nDim = potential.nDim
-        if(position == None):
-            position = self.randomPos()
+
+
 
         #check if system is coupled to conditions:
         for condition in self.conditions:
@@ -66,14 +66,19 @@ class system:
                 condition.dt = self.integrator.dt
             else:
                 condition.dt=1
-        self._currentPosition = position
-        self._currentTemperature = temperature
 
-        self.init_state()
+        self.init_state(initial_position=position)
 
-    def init_state(self):
+    def init_state(self, initial_position=None):
+        if (initial_position == None):
+            initial_position = self.randomPos()
+
+        self.initial_positions = initial_position
+
+        self._currentPosition = self.initial_positions
         self._currentForce = 0
         self._currentVelocities = 0
+        self._currentTemperature = self.temperature
         self.currentState = self.state(self._currentPosition, self._currentTemperature,0, 0, 0, 0, 0)
 
         self.updateEne()
@@ -82,6 +87,10 @@ class system:
                                         (self._currentTotKin+self._currentTotPot),
                                         self._currentTotPot, self._currentTotKin,
                                         self._currentForce, self._currentVelocities)
+
+    def randomPos(self)-> Iterable[Iterable[Number]]:
+        pos = [[np.random.rand() * 20.0 - 10.0 for x in range(self.nDim)]]
+        return pos
 
     def append_state(self, newPosition, newVelocity, newForces):
         self._currentPosition = newPosition
@@ -148,10 +157,6 @@ class system:
         for aditional in self.conditions:
             aditional.apply()
 
-    def randomPos(self):
-        pos = [[np.random.rand() * 20.0 - 10.0 for x in range(self.nDim)]]
-        return pos
-
     def randomShift(self):
         posShift = (np.random.rand() * 2.0 - 1.0) * self.posShift
         return posShift
@@ -178,9 +183,9 @@ class system:
             return 0
 
     def totPot(self)->float:
-        return sum(self.potential.ene(self._currentPosition))
+        return sum(map(sum, self.potential.ene(self._currentPosition)))
 
-    def getPot(self)->List[float]:
+    def getPot(self)->Iterable[float]:
         return self.potential.ene(self._currentPosition)
 
     def propagate(self):
@@ -193,10 +198,9 @@ class system:
     def getCurrentState(self)->state:
         return self.currentState
     
-    def getTrajectory(self)->List[state]:
+    def getTrajectory(self)->Iterable[state]:
         return self.trajectory
 
-    
 class perturbedSystem(system):
     """
     
@@ -205,12 +209,12 @@ class perturbedSystem(system):
     #
     state = data.lambdaState
     currentState: data.lambdaState
-    potential: perturbedPotentialCls
+    potential: _perturbedPotentialCls
 
     #
     _currentLam:float = None
 
-    def __init__(self, potential:potentialCls, integrator: integratorCls, conditions: List[condition]=[],
+    def __init__(self, potential:_potentialCls, integrator: integratorCls, conditions: Iterable[Condition]=[],
                  temperature: float = 298.0, position: float = None, lam:float=0.0):
 
         self._currentLam = lam
@@ -243,6 +247,3 @@ class perturbedSystem(system):
         self.omega = np.sqrt((1.0 + self.potential.alpha * self._currentLam) * self.potential.fc / self.mass)
         self.potential.set_lam(lam=self._currentLam)
         self.updateEne()
-        
-def edsSystem(system1D):
-    pass

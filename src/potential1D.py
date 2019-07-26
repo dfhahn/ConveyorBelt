@@ -2,13 +2,14 @@
 Module: Potential
     This module shall be used to implement subclasses of Potential. This module contains all available potentials."""
 
+import math
 import numpy as np
 import typing as t
-import math
+import numbers
 import scipy.constants as const
 from collections.abc import Iterable
 
-class potentialCls:
+class _potentialCls:
     '''
     potential base class
     '''
@@ -21,11 +22,19 @@ class potentialCls:
     def __name__(self)->str:
         return str("Unknown")
 
-    def _check_positions_type(self, positions:t.List[float])->t.List[float]:
+    def _check_positions_type(self, positions:t.Union[t.Iterable[numbers.Number], numbers.Number, t.Iterable[t.Iterable[numbers.Number]]])->t.List[float]:
         if (isinstance(positions, Iterable)):
-            positions = list(map(float, list(positions)))
+            if(all([isinstance(x, numbers.Number) for x in positions])):
+                positions = [positions]
+                pass
+                #positions = list(map(float, list(positions)))
+            elif(len(positions) == self.nDim and all([isinstance(x, Iterable) for x in positions])):
+                pass
+                #positions = list(map(lambda x: list(map(float, x)), positions))[:self.nDim]
+            else:
+                raise Exception("list dimensionality does not fit to potential dimensionality! len(list)="+str(len(list))+" potDims "+str(self.nDim))
         else:
-            positions = [float(positions)]
+            positions = [[float(positions)]]
         return positions
 
     def _calculate_energies(self, positions:t.List[float], *kargs):
@@ -41,7 +50,6 @@ class potentialCls:
         :param pos: position on 1D potential energy surface
         :return: energy
         '''
-
         positions = self._check_positions_type(positions)
         return self._calculate_energies(positions)
 
@@ -56,16 +64,17 @@ class potentialCls:
         return self._calculate_dhdpos(positions)
 
 
-class flat_well(potentialCls):
+class flat_well(_potentialCls):
     '''
         .. autoclass:: flat well potential
     '''
     name:str = "Flat Well"
     x_min: float = None
     x_max: float = None
-    y_max = None
+    y_max:float = None
+    y_min:float = None
 
-    def __init__(self, x_range: list = [0, 1], y_max: float = 1000):
+    def __init__(self, x_range: list = [0, 1], y_max: float = 1000, y_min:float=0):
         '''
         initializes flat well potential class
 
@@ -74,18 +83,19 @@ class flat_well(potentialCls):
         self.x_min = min(x_range)
         self.x_max = max(x_range)
         self.y_max = y_max
+        self.y_min = y_min
 
     def _calculate_energies(self, positions, *kargs):
-        return [0 if (pos > self.x_min and pos < self.x_max) else self.y_max for pos in positions]
+        return [self.y_min if (pos >= self.x_min and pos <= self.x_max) else self.y_max for pos in positions[0]]
 
     def _calculate_dhdpos(self, positions: (t.List[float] or float), *kargs) -> (t.List[float] or float):
-        return self._calculate_energies(self, positions, *kargs)
+        return [0 for pos in positions[0]]
 
 """
     SIMPLE POTENTIALS
 """
 
-class harmonicOsc1D(potentialCls):
+class harmonicOsc1D(_potentialCls):
     '''
         .. autoclass:: harmonic oscillator potential
     '''
@@ -105,12 +115,12 @@ class harmonicOsc1D(potentialCls):
         self.y_shift = y_shift
 
     def _calculate_energies(self, positions:t.List[float], *kargs) -> (t.List[float]):
-        return list(map(lambda pos: 0.5 * self.fc * (pos - self.x_shift) ** 2 - self.y_shift, positions))
+        return [list(map(lambda pos: 0.5 * self.fc * (pos - self.x_shift) ** 2 - self.y_shift, dimPos)) for dimPos in positions]
 
     def _calculate_dhdpos(self, positions:t.List[float], *kargs) -> (t.List[float]):
         return list(map(lambda pos: self.fc * (pos - self.x_shift), positions))
 
-class wavePotential(potentialCls):
+class wavePotential(_potentialCls):
     '''
         .. autoclass:: Wave Potential
     '''
@@ -147,7 +157,7 @@ class wavePotential(potentialCls):
             self._calculate_dhdpos = lambda positions: list(
                 map(lambda x: self.amplitude * math.sin(self.multiplicity * (x + self.phase_shift)), np.deg2rad(positions)))
 
-class torsionPotential(potentialCls):
+class torsionPotential(_potentialCls):
     '''
         .. autoclass:: Torsion Potential
     '''
@@ -173,12 +183,12 @@ class torsionPotential(potentialCls):
             self._calculate_energies = lambda positions: np.array(self.wave_potentials[0].ene(positions))
             self._caclulcate_dhdpos = lambda positions: np.array(self.wave_potentials[0].dhdpos(positions))
 
-class coulombPotential(potentialCls):
+class coulombPotential(_potentialCls):
 
     epsilon:float
 
     coulombLaw = lambda q1,q2,r,epsilon: (q1*q2/(r*epsilon*4*math.pi))
-    def __init__(self, q1, q2, epsilon):
+    def __init__(self, q1=1, q2=1, epsilon=1):
         self.q1=q1
         self.q2=q2
         self.epsilon=epsilon
@@ -190,7 +200,7 @@ class coulombPotential(potentialCls):
     def _calculate_dhdpos(self, distances:t.List[float], *kargs):
         raise NotImplemented("deviation not implemented yet")
 
-class lennardJonesPotential(potentialCls):
+class lennardJonesPotential(_potentialCls):
     '''
         .. autoclass:: Lennard Jones Potential
     '''
@@ -201,10 +211,9 @@ class lennardJonesPotential(potentialCls):
     x_shift: float = None
     y_shift: float = None
 
-    def __init__(self, c6: float, c12: float, x_shift: float = 0, y_shift=0):
+    def __init__(self, c6: float=0.2, c12: float=0.0001, x_shift: float = 0, y_shift=0):
         '''
         initializes flat well potential class
-
         '''
         super().__init__()
         self.c6 = c6
@@ -219,7 +228,7 @@ class lennardJonesPotential(potentialCls):
         return [6 * ((2 * self.c12) - (pos ** 6 * self.c6)) / pos ** 13 for pos in positions]
 
 
-class doubleWellPot1D(potentialCls):
+class doubleWellPot1D(_potentialCls):
     '''
         .. autoclass:: unperturbed double well potential
     '''
@@ -236,7 +245,7 @@ class doubleWellPot1D(potentialCls):
         :param a:
         :param b:
         '''
-        super(potentialCls).__init__()
+        super(_potentialCls).__init__()
         self.Vmax = Vmax
         self.a = a
         self.b = b
@@ -252,7 +261,7 @@ class doubleWellPot1D(potentialCls):
     PERTURBED POTENTIALS
 """
 
-class perturbedPotentialCls(potentialCls):
+class _perturbedPotentialCls(_potentialCls):
     """
         .. autoclass:: perturbedPotentialCls
     """
@@ -265,7 +274,7 @@ class perturbedPotentialCls(potentialCls):
         :param alpha: perturbation parameter for width of harmonic oscillator
         :param gamma: perturbation parameter for position of harmonic oscillator
         '''
-        super(potentialCls).__init__()
+        super(_potentialCls).__init__()
         self.lam = lam
 
     def _calculate_energies(self, positions:t.List[float], lam:float=1.0):
@@ -312,9 +321,9 @@ class perturbedPotentialCls(potentialCls):
         positions = self._check_positions_type(positions)
         return self._calculate_dhdlam(positions)
 
-class linCoupledHosc(perturbedPotentialCls):
+class linCoupledHosc(_perturbedPotentialCls):
     def __init__(self, ha=harmonicOsc1D(fc=1.0, x_shift=0.0), hb=harmonicOsc1D(fc=11.0, x_shift=0.0), lam=0):
-        super(potentialCls).__init__()
+        super(_potentialCls).__init__()
 
         self.ha = ha
         self.hb = hb
@@ -333,9 +342,9 @@ class linCoupledHosc(perturbedPotentialCls):
 
 
 
-class expCoupledHosc(perturbedPotentialCls):
+class expCoupledHosc(_perturbedPotentialCls):
     def __init__(self, ha=harmonicOsc1D(fc=1.0, x_shift=0.0), hb=harmonicOsc1D(fc=11.0, x_shift=0.0), s=1.0, temp=300.0, lam:float = 0.0):
-        super(potentialCls).__init__()
+        super(_potentialCls).__init__()
 
         self.ha = ha
         self.hb = hb
@@ -357,7 +366,7 @@ class expCoupledHosc(perturbedPotentialCls):
     def _calculate_dhdlam(self, positions:(t.List[float] or float), lam:float=1.0) -> (t.List[float] or float):
         return list(map(self.couple_H_dhdlam, zip(self.ha.ene(positions),self.hb.ene(positions))))
 
-class pertHarmonicOsc1D(perturbedPotentialCls):
+class pertHarmonicOsc1D(_perturbedPotentialCls):
     """
         .. autoclass:: pertHarmonixsOsc1D
     """
@@ -369,7 +378,7 @@ class pertHarmonicOsc1D(perturbedPotentialCls):
         :param alpha: perturbation parameter for width of harmonic oscillator
         :param gamma: perturbation parameter for position of harmonic oscillator
         '''
-        super(perturbedPotentialCls).__init__()
+        super(_perturbedPotentialCls).__init__()
 
         self.fc = fc
         self.alpha = alpha
@@ -390,23 +399,23 @@ class pertHarmonicOsc1D(perturbedPotentialCls):
 """
     ENVELOPED POTENTIALS
 """
-class envelopedPotential(potentialCls):
+class envelopedPotential(_potentialCls):
     """
     .. autoclass:: envelopedPotential
     """
-    V_is:t.List[potentialCls]=None
+    V_is:t.List[_potentialCls]=None
     E_is:t.List[float]=None
     numStates:int=None
     s:float=None
 
-    def __init__(self, V_is: t.List[potentialCls], s: float = 1.0, Eoff_i: t.List[float] = None):
+    def __init__(self, V_is: t.List[_potentialCls], s: float = 1.0, Eoff_i: t.List[float] = None):
         """
 
         :param V_is:
         :param s:
         :param Eoff_i:
         """
-        super(potentialCls).__init__()
+        super(_potentialCls).__init__()
         self.numStates = len(V_is)
         if (self.numStates < 2):
             raise IOError("It does not make sense enveloping less than two potentials!")
@@ -503,19 +512,19 @@ class envelopedPotentialMultiS(envelopedPotential):
     """
     .. autoclass:: envelopedPotential
     """
-    V_is:t.List[potentialCls] = None
+    V_is:t.List[_potentialCls] = None
     E_is:t.List[float] = None
     numStates:int = None
     s:t.List[float] = None
 
-    def __init__(self, V_is: t.List[potentialCls], s: t.List[float], Eoff_i: t.List[float] = None):
+    def __init__(self, V_is: t.List[_potentialCls], s: t.List[float], Eoff_i: t.List[float] = None):
         """
 
         :param V_is:
         :param s:
         :param Eoff_i:
         """
-        super(potentialCls).__init__()
+        super(_potentialCls).__init__()
         self.numStates = len(V_is)
         if (self.numStates < 2):
             raise IOError("It does not make sense enveloping less than two potentials!")

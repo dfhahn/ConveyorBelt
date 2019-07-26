@@ -1,7 +1,7 @@
 from ConveyorBelt.src.system import system as sys
-from ConveyorBelt.src.conditions.conditions import condition
+from ConveyorBelt.src.conditions.conditions import Condition
 
-class thermostat(condition):
+class thermostat(Condition):
     """
     ..autoclass: Thermostat
         This is the parent class of Thermostats.

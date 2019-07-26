@@ -1,10 +1,10 @@
 import numpy as np
 import typing as t
 from collections import Iterable
-from ConveyorBelt.src.conditions.conditions import condition
+from ConveyorBelt.src.conditions.conditions import Condition
 from ConveyorBelt.src.system import system as sys
 
-class periodicBoundaryCondition(condition):
+class periodicBoundaryCondition(Condition):
     """
         ..autoclass:: periodicBoundaryCondition
             This class allows to enable sampling in mirror images and projects the coordinates to the restricted space.

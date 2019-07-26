@@ -82,7 +82,7 @@ class monteCarloIntegrator(integrator):
         while(True):
             current_state = system.currentState
             self.oldpos = current_state.position
-            self.randomShift()
+            self.randomShift(system.nDim)
             self.newPos = self.oldpos + self.posShift
             
             #only get positions in certain range or accept if no range
