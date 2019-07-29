@@ -30,6 +30,7 @@ class system:
     temperature:float = 298.0
     mass:float = 1 #for one particle systems!!!!
     nparticles:int =1 #Todo: adapt it to be multiple particles
+    nDim:int
     initial_positions:Iterable[float]
     
     #output
@@ -66,7 +67,8 @@ class system:
                 condition.dt = self.integrator.dt
             else:
                 condition.dt=1
-
+        #define dims of system. #Todo: only true for one dim Pot.
+        self.nDim = potential.nDim
         self.init_state(initial_position=position)
 
     def init_state(self, initial_position=None):
@@ -77,7 +79,7 @@ class system:
 
         self._currentPosition = self.initial_positions
         self._currentForce = 0
-        self._currentVelocities = 0
+        self._currentVelocities = [0 for dim in range(self.potential.nDim)]
         self._currentTemperature = self.temperature
         self.currentState = self.state(self._currentPosition, self._currentTemperature,0, 0, 0, 0, 0)
 
@@ -157,13 +159,14 @@ class system:
         for aditional in self.conditions:
             aditional.apply()
 
+
     def randomShift(self):
         posShift = (np.random.rand() * 2.0 - 1.0) * self.posShift
         return posShift
 
     def initVel(self):
-        self._currentVelocities = np.sqrt(const.gas_constant / 1000.0 * self.temperature / self.mass) * np.random.normal()
-        self.veltemp = self.mass / const.gas_constant / 1000.0 * self._currentVelocities ** 2  # t
+        self._currentVelocities = np.array([np.sqrt(const.gas_constant / 1000.0 * self.temperature / self.mass) * np.random.normal() for dim in range(self.nDim)])
+        self.veltemp = self.mass / const.gas_constant / 1000.0 * np.linalg.norm(self._currentVelocities) ** 2  # t
         return self._currentVelocities
 
     def updateTemp(self, temperature:float):
@@ -178,7 +181,7 @@ class system:
 
     def totKin(self):
         if(self._currentVelocities != None):
-            return 0.5 * self.mass * self._currentVelocities ** 2
+            return 0.5 * self.mass * np.linalg.norm(self._currentVelocities) ** 2  #Todo: velocities is a VECTOR not sum but vector length is needed
         else:
             return 0
 
@@ -187,6 +190,10 @@ class system:
 
     def getPot(self)->Iterable[float]:
         return self.potential.ene(self._currentPosition)
+
+    def getTotEnergy(self):
+        self.updateEne()
+        return self.totPot()+self.totKin()
 
     def propagate(self):
         self._currentPosition, self._currentVelocities, self._currentForce = self.integrator.step(self) #self.current_state)

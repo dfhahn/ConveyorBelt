@@ -224,10 +224,10 @@ class positionVerletIntegrator(newtonianIntegrator):
         currentVelocity = system._currentVelocities
 
         #calculation:
-        newForces = system.potential.dhdpos(currentPosition)[0]    #Todo: make multi particles possible - use current forces!
-        velocity_new = currentVelocity - (newForces / system.mass * self.dt)
+        newForces = system.potential.dhdpos(currentPosition)[0]  #Todo: make multi particles possible - use current forces!
+        velocity_new = [np.subtract(currentVelocity[dim], np.divide(newForces[dim], np.multiply(system.mass, self.dt))) for dim in range(system.nDim)] #TODO: check if velocities are correctly correctly read with their dims
         new_velocity = velocity_new #0.5 * (currentVelocity + velocity_new)  #update velo
-        new_position = currentPosition + new_velocity * self.dt
+        new_position = np.add(currentPosition, np.multiply(new_velocity , self.dt))
 
 
         if(self.verbose):

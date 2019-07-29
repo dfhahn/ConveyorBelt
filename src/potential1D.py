@@ -118,7 +118,7 @@ class harmonicOsc1D(_potentialCls):
         return [list(map(lambda pos: 0.5 * self.fc * (pos - self.x_shift) ** 2 - self.y_shift, dimPos)) for dimPos in positions]
 
     def _calculate_dhdpos(self, positions:t.List[float], *kargs) -> (t.List[float]):
-        return list(map(lambda pos: self.fc * (pos - self.x_shift), positions))
+        return [list(map(lambda pos: self.fc * (pos - self.x_shift), dimPos)) for dimPos in positions]
 
 class wavePotential(_potentialCls):
     '''
